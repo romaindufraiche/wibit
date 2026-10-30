@@ -622,10 +622,10 @@ export class Builder {
     }
   }
 
-  placeStandalones() {
+  placeStandalones(count?: number) {
     const pool = this.usable().filter((s) => s.role === 'standalone' && s.id !== 'pologoal' && s.id !== 'triplescore');
     if (!pool.length) return;
-    const n = this.rng.int(1, 3);
+    const n = count ?? this.rng.int(1, 3);
     for (let k = 0; k < n; k++) {
       const s = this.rng.pick(pool);
       for (let t = 0; t < 120; t++) {
@@ -752,7 +752,7 @@ export function extendPark(site: Site, existing: Placed[], params: GenParams, at
     while (!b.exhausted() && guard++ < 60) {
       const ports = b.free.filter((f) => {
         const role = spec(b.mods.find((m) => m.uid === f.uid)!.type).role;
-        return role !== 'terminal' && b.clearance(f) > 5;
+        return role !== 'terminal' && b.clearance(f) > 3;
       });
       if (!ports.length) break;
       // priorité aux jonctions, puis aux extrémités d'obstacles
@@ -768,6 +768,12 @@ export function extendPark(site: Site, existing: Placed[], params: GenParams, at
     b.closeDeadEnds();
     b.placeAccesses();
     b.placeWatch();
+    // reste du budget : modules autonomes dans l'eau libre (Volley, Bouncer, IceTower…)
+    for (let k = 0; k < 4 && !b.exhausted(); k++) {
+      const before = b.mods.length;
+      b.placeStandalones(1);
+      if (b.mods.length === before) break;
+    }
     if (b.mods.length === existing.length) continue;
     const project: Project = { version: 1, name: '', site, audience: params.audience, modules: b.mods };
     const graph = buildGraph(project.modules);

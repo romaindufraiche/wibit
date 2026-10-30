@@ -22,8 +22,16 @@ npm install
 npm run dev
 ```
 
-Puis ouvrir l'URL affichée (par défaut http://localhost:5173). Build de production : `npm run build`
-(site statique dans `dist/`, hébergeable n'importe où). Tests : `npm test`.
+Puis ouvrir l'URL affichée (par défaut http://localhost:5173). Pour les comptes et l'enregistrement
+en ligne, lancer aussi l'API dans un second terminal :
+
+```bash
+npm run dev:api
+```
+
+Production : `npm run build` puis `npm start` (serveur Node : site + API). Sans `DATABASE_URL`,
+les comptes et parcs sont stockés dans `data/db.json` ; avec `DATABASE_URL`, dans PostgreSQL.
+Définir `SESSION_SECRET` (chaîne aléatoire) en production. Tests : `npm test`.
 
 ## Fonctionnalités
 
@@ -36,6 +44,11 @@ Puis ouvrir l'URL affichée (par défaut http://localhost:5173). Build de produc
 | Devis | Total HT, capacité, emprise, nomenclature, produits à prévoir (ancrages, bouées, gilets, bateau). |
 | 🎲 Générateur | Parc cohérent selon public, capacité, intensité, boucle InfinityLoop, grand toboggan, modules autonomes. Déterministe par graine. |
 | ✏️ Stylo main levée | Bouton « Stylo » (touche P) : tracez un parcours sur l'eau, au relâchement les modules se posent le long du tracé en respectant toutes les règles (virages, jonctions, enchaînements, fin de parcours). Commencer près d'une connexion libre prolonge un parc existant. Annulable en un Ctrl+Z. |
+| Budget | Budget maximum dans le générateur (produits à prévoir inclus). |
+| Mon parc & saison | Stock de modules possédés (import .json / .csv « module ; quantité » ou parc affiché) ; « Agrandir le parc affiché » avec un budget (ex. +50 000 €) ; « Nouvelle composition avec mon stock ». |
+| Plan d'ancrage | Position GPS + azimut du large ; export GPX (GPS Garmin, traceurs, Navionics, OsmAnd), KML (Google Earth, téléphone), CSV et plan imprimable. Ancres numérotées dans l'ordre de pose (tournée en bateau). |
+| Mode Play | Baigneurs animés (parcours, pauses, trampolines, sauts, toboggans, nage, groupes d'amis), fréquentation 10–100 % de la capacité, caméra cinématique ou libre. |
+| Comptes | Connexion / inscription, « Mes parcs » enregistrés en ligne, import d'un parc existant. |
 | Modèles de parcs | Kids Lagoon, Family Beach, AquaTrack, SportsPark XL, Lake Resort. |
 | Exports | Devis PDF (impression), liste Excel (CSV), projet JSON, capture PNG, lien de partage (projet encodé dans l'URL). Sauvegarde automatique dans le navigateur. |
 

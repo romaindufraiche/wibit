@@ -16,6 +16,7 @@ import { icon } from './ui/icons';
 import { exportAnchors, printAnchorPlan } from './io/anchorplan';
 import { eur } from './io/export';
 import { seasonFlyout } from './ui/season';
+import { account, openAuthDialog, parksFlyout } from './ui/account';
 import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
 
 const store = new Store();
@@ -287,6 +288,27 @@ function openFlyout(name: string) {
   flyout = name;
   el.innerHTML = '';
   if (name === 'site') el.appendChild(siteFlyout(store, () => catalog.redraw()));
+  if (name === 'parks') {
+    const draw = () => {
+      el.innerHTML = '';
+      el.appendChild(
+        parksFlyout(
+          {
+            current: () => store.project,
+            open: (p) => {
+              store.setProject(p);
+              viewport.frameAll();
+            },
+            toast,
+            login: () => openAuthDialog(afterLogin),
+          },
+          draw,
+        ),
+      );
+      refreshUserBtn();
+    };
+    draw();
+  }
   if (name === 'season') {
     const draw = () => {
       el.innerHTML = '';
@@ -377,6 +399,7 @@ function refreshRail() {
     ['layout', 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
     ['waves', "Plan d'eau, public & GPS", '', () => openFlyout('site'), flyout === 'site'],
     ['package', 'Mon parc & saison prochaine', '', () => openFlyout('season'), flyout === 'season'],
+    ['cloud', 'Mes parcs (compte)', '', () => openFlyout('parks'), flyout === 'parks'],
     null,
     ['cube', 'Vue 3D', '', () => viewport.frameAll(false), false],
     ['top', 'Vue de dessus', '', () => viewport.frameAll(true), false],
@@ -416,6 +439,19 @@ const topButtons: [string, string, string][] = [
   ['export-menu', 'download', 'Exporter'],
 ];
 for (const [a, ic, tip] of topButtons) top.appendChild(h(`<button class="icon-btn" data-action="${a}" title="${tip}">${icon(ic, 19)}</button>`));
+const userBtn = h(`<button class="user-btn" data-action="account"></button>`);
+top.appendChild(userBtn);
+function refreshUserBtn() {
+  userBtn.innerHTML = account.loggedIn ? `<span class="avatar">${esc((account.user!.name || account.user!.email).slice(0, 1).toUpperCase())}</span>` : `${icon('user', 17)}<span>Connexion</span>`;
+  userBtn.title = account.loggedIn ? `${account.user!.email} — Mes parcs` : 'Se connecter / créer un compte';
+}
+function afterLogin() {
+  refreshUserBtn();
+  toast(`Connecté : ${account.user!.email}`);
+  flyout = null;
+  openFlyout('parks');
+}
+refreshUserBtn();
 $('.btn-generate').innerHTML = `${icon('shuffle', 17)}<span>Générer un parc</span>`;
 const playBtn = h(`<button class="btn-play" data-action="play" title="Mode Play : voir le parc en action (Espace)">${icon('play', 15)}<span>Play</span></button>`);
 $('.gen-group').prepend(playBtn);
@@ -509,6 +545,7 @@ fileInput.onchange = async () => {
   if (!f) return;
   try {
     store.setProject(parseProject(await f.text()));
+    account.currentParkId = null;
     viewport.frameAll();
     toast(`Projet « ${store.project.name} » ouvert`);
   } catch (e) {
@@ -520,15 +557,27 @@ fileInput.onchange = async () => {
 const actions: Record<string, (btn: HTMLElement) => void> = {
   new: () => {
     if (store.project.modules.length && !confirm('Créer un nouveau parc ? Le parc actuel reste récupérable avec Annuler.')) return;
+    account.currentParkId = null;
     store.setProject({ ...emptyProject(), site: { ...store.project.site }, audience: store.project.audience });
     openStartDialog();
   },
   open: () => fileInput.click(),
-  save: () => {
+  save: async () => {
     autosave(store.project);
+    if (account.loggedIn) {
+      try {
+        await account.save(store.project);
+        toast('Parc enregistré dans votre compte');
+        if (flyout === 'parks') (flyout = null), openFlyout('parks');
+      } catch (e) {
+        toast(`Enregistrement en ligne impossible : ${(e as Error).message}`);
+      }
+      return;
+    }
     downloadJSON(store.project);
-    toast('Projet enregistré');
+    toast('Projet téléchargé (.json) — connectez-vous pour l’enregistrer en ligne');
   },
+  account: () => (account.loggedIn ? openFlyout('parks') : openAuthDialog(afterLogin)),
   'export-menu': (btn) => {
     const r = btn.getBoundingClientRect();
     exportMenu.style.top = `${r.bottom + 10}px`;
