@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wibit Create</title>
+    <meta name="description" content="Configurateur 3D de parcs aquatiques gonflables Wibit — conception, devis et génération automatique de parcs cohérents." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">W</span>
+        <span class="brand-name">WIBIT <b>CREATE</b></span>
+      </div>
+      <input id="project-name" class="project-name" aria-label="Nom du projet" />
+      <nav class="actions">
+        <button data-action="new" title="Nouveau projet">Nouveau</button>
+        <button data-action="open" title="Ouvrir un projet (.json)">Ouvrir</button>
+        <button data-action="save" title="Enregistrer (Ctrl+S)">Enregistrer</button>
+        <div class="menu">
+          <button data-action="export-menu">Exporter ▾</button>
+          <div class="menu-list" id="export-menu" hidden>
+            <button data-action="report">Devis PDF (impression)</button>
+            <button data-action="csv">Liste Excel (.csv)</button>
+            <button data-action="json">Projet (.json)</button>
+            <button data-action="png">Capture d'écran (.png)</button>
+            <button data-action="share">Copier le lien de partage</button>
+          </div>
+        </div>
+        <span class="sep"></span>
+        <button data-action="undo" title="Annuler (Ctrl+Z)" class="icon">↶</button>
+        <button data-action="redo" title="Rétablir (Ctrl+Y)" class="icon">↷</button>
+      </nav>
+      <div class="gen">
+        <button class="btn-random" data-action="random" title="Générer un parc aléatoire cohérent (G)">🎲 Parc aléatoire</button>
+        <button class="btn-gen-settings" data-action="gen-settings" title="Paramètres du générateur">⚙</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="panel left">
+        <div class="tabs">
+          <button class="tab active" data-tab="catalog">Modules</button>
+          <button class="tab" data-tab="templates">Modèles de parcs</button>
+        </div>
+        <div class="tab-body" id="tab-catalog">
+          <input id="search" class="search" placeholder="Rechercher un module…" />
+          <div class="filters" id="filters"></div>
+          <div id="catalog" class="catalog"></div>
+        </div>
+        <div class="tab-body" id="tab-templates" hidden>
+          <div id="templates" class="templates"></div>
+        </div>
+      </aside>
+
+      <section class="viewport-wrap">
+        <div id="viewport" class="viewport"></div>
+        <div class="view-toolbar" id="view-toolbar"></div>
+        <div class="hint" id="hint">
+          <b>Clic gauche</b> sélectionner / déplacer · <b>Glisser le vide</b> tourner · <b>Clic droit</b> panoramique · <b>Molette</b> zoom ·
+          <b>R</b> rotation 90° (<b>Maj+R</b> 15°) · <b>Ctrl+D</b> dupliquer · <b>Suppr</b> effacer · <b>Alt</b> sans aimant
+        </div>
+        <div class="tooltip" id="tooltip" hidden></div>
+        <div class="toast" id="toast" hidden></div>
+      </section>
+
+      <aside class="panel right">
+        <section class="card" id="inspector"></section>
+        <section class="card" id="site"></section>
+        <section class="card" id="summary"></section>
+        <section class="card" id="issues"></section>
+      </aside>
+    </main>
+
+    <dialog id="gen-dialog" class="dialog"></dialog>
+    <dialog id="start-dialog" class="dialog"></dialog>
+    <input type="file" id="file-input" accept=".json,application/json" hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
