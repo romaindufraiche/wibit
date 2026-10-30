@@ -103,7 +103,18 @@ Boucle    := T-Connect → A → Virage → M → Virage → Bas(avec Junction) 
    retenue selon un score (erreurs ≫ alertes ≫ écart à la capacité, variété, boucle et
    grand toboggan présents). Même graine ⇒ même parc (partageable).
 
-## 4. Points à valider avec Wibit
+## 4. Stylo main levée
+
+Le tracé est rééchantillonné tous les 1 m et lissé. Le parcours démarre sur un port libre
+situé à moins de 4 m du début du tracé (prolongement d'un parc), sinon sur un accès posé et
+orienté selon le tracé. À chaque pas, parmi les modules autorisés par la grammaire
+(section 3, mêmes contraintes d'enchaînement et de hauteur), on garde celui dont la sortie
+colle le mieux au tracé : écart au tracé, écart du centre du module, alignement avec la
+tangente, avancée le long du tracé, variété. En cas d'impasse, retour arrière (jusqu'à 6
+fois). Le parcours se termine par un module de fin à moins de 3,5 m du bout du tracé, et
+des postes de surveillance sont ajoutés si la capacité l'exige.
+
+## 5. Points à valider avec Wibit
 
 - Capacité réelle par module (utilisée pour le dimensionnement) — **estimée** aujourd'hui.
 - Grille tarifaire, nombre d'ancrages par module, longueur de la ligne de bouées.

@@ -718,3 +718,11 @@ select {
 .view-toolbar button {
   white-space: nowrap;
 }
+.view-toolbar button.pen {
+  font-weight: 700;
+  color: #fff;
+}
+.view-toolbar button.pen.on {
+  background: var(--yellow);
+  color: var(--yellow-ink);
+}

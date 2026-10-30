@@ -53,7 +53,7 @@ export interface GenResult {
   log: string[];
 }
 
-interface OpenPort {
+export interface OpenPort {
   uid: string;
   portId: string;
   x: number;
@@ -64,7 +64,7 @@ interface OpenPort {
 
 const BIG_SLIDES = ['wave', 'mountain', 'actionloop', 'springboard'];
 
-class Builder {
+export class Builder {
   mods: Placed[] = [];
   obbs = new Map<string, OBB>();
   zones: { owner: string; o: OBB }[] = [];

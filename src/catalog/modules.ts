@@ -27,7 +27,8 @@ const four = (L: number, W: number, w = 2) => [
 const tee = (L: number, W: number, w = 2) => [P('a', -L / 2, 0, -1, 0, w), P('c', 0, -W / 2, 0, -1, w), P('d', 0, W / 2, 0, 1, w)];
 const yConn = (L: number, W: number) => {
   const k = Math.SQRT1_2;
-  return [P('a', -L / 2, 0, -1, 0), P('c', L / 2 - 0.55, -W / 2 + 0.55, k, -k), P('d', L / 2 - 0.55, W / 2 - 0.55, k, k)];
+  // sorties à 45° sur les coins avant : un module de 2 m de large s'y accroche sans chevaucher le Y
+  return [P('a', -L / 2, 0, -1, 0), P('c', L / 2, -W / 2, k, -k), P('d', L / 2, W / 2, k, k)];
 };
 /** Virage à 90° : arc centré sur le coin (−L/2, −W/2), voie de largeur w. */
 const turn = (L: number, W: number, w = 2) => [P('a', -L / 2, W / 2 - w / 2, -1, 0, w), P('b', L / 2 - w / 2, -W / 2, 0, -1, w)];

@@ -35,6 +35,7 @@ const ZONE_MATS = {
   slide: new THREE.MeshBasicMaterial({ color: 0xff8a00, transparent: true, opacity: 0.22, depthWrite: false }),
   jump: new THREE.MeshBasicMaterial({ color: 0xff4fa3, transparent: true, opacity: 0.22, depthWrite: false }),
 };
+const STROKE_MAT = new THREE.MeshBasicMaterial({ color: 0xffc20e, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.9 });
 const ANCHOR_GEO = new THREE.SphereGeometry(0.18, 10, 8);
 const ANCHOR_MAT = new THREE.MeshStandardMaterial({ color: 0xff3b30 });
 const zoneGeos = new Map<string, THREE.PlaneGeometry>();
@@ -56,6 +57,11 @@ export class Viewport {
   opts: ViewOptions = { grid: true, ports: true, zones: true, anchors: false, buoys: true };
   onDropModule?: (type: string, x: number, z: number) => void;
   onHover?: (p: Placed | null, clientX: number, clientY: number) => void;
+  /** Tracé à main levée terminé (points au sol). */
+  onStroke?: (points: { x: number; z: number }[]) => void;
+  /** Mode stylo : le clic gauche dessine au lieu de sélectionner / tourner. */
+  penMode = false;
+  private stroke: { pts: { x: number; z: number }[]; mesh: THREE.Mesh } | null = null;
 
   private objs = new Map<string, ModObj>();
   private siteGroup = new THREE.Group();
@@ -350,6 +356,17 @@ export class Viewport {
     el.addEventListener('pointerdown', (e) => {
       this.downAt = { x: e.clientX, y: e.clientY };
       if (e.button !== 0) return;
+      if (this.penMode) {
+        const p = this.groundPoint(e);
+        if (!p) return;
+        this.controls.enabled = false;
+        el.setPointerCapture(e.pointerId);
+        const mesh = new THREE.Mesh(new THREE.BufferGeometry(), STROKE_MAT);
+        mesh.renderOrder = 20;
+        this.scene.add(mesh);
+        this.stroke = { pts: [{ x: p.x, z: p.z }], mesh };
+        return;
+      }
       const uid = this.pick(e);
       if (!uid) return;
       if (e.shiftKey) {
@@ -365,6 +382,15 @@ export class Viewport {
       this.drag = { start, orig, moved: false, anchor: uid };
     });
     el.addEventListener('pointermove', (e) => {
+      if (this.stroke) {
+        const p = this.groundPoint(e);
+        const last = this.stroke.pts[this.stroke.pts.length - 1];
+        if (p && Math.hypot(p.x - last.x, p.z - last.z) > 0.3) {
+          this.stroke.pts.push({ x: p.x, z: p.z });
+          this.updateStrokeMesh();
+        }
+        return;
+      }
       if (this.drag) {
         const p = this.groundPoint(e);
         if (!p) return;
@@ -401,6 +427,20 @@ export class Viewport {
       }
     });
     const end = (e: PointerEvent) => {
+      if (this.stroke) {
+        const pts = this.stroke.pts;
+        this.controls.enabled = true;
+        if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+        const mesh = this.stroke.mesh;
+        this.stroke = null;
+        // le tracé reste visible un instant pendant la pose des modules
+        setTimeout(() => {
+          this.scene.remove(mesh);
+          mesh.geometry.dispose();
+        }, 900);
+        if (pts.length > 2) this.onStroke?.(pts);
+        return;
+      }
       if (this.drag) {
         this.drag = null;
         this.controls.enabled = true;
@@ -425,6 +465,36 @@ export class Viewport {
       const p = this.groundPoint(e);
       if (type && p) this.onDropModule?.(type, p.x, p.z);
     });
+  }
+
+  setPenMode(on: boolean) {
+    this.penMode = on;
+    this.renderer.domElement.style.cursor = on ? 'crosshair' : '';
+  }
+
+  /** Ruban jaune posé sur l'eau qui matérialise le tracé en cours. */
+  private updateStrokeMesh() {
+    if (!this.stroke) return;
+    const pts = this.stroke.pts;
+    const half = 0.35;
+    const pos: number[] = [];
+    const idx: number[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[Math.max(0, i - 1)],
+        b = pts[Math.min(pts.length - 1, i + 1)];
+      const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+      const nx = -(b.z - a.z) / len,
+        nz = (b.x - a.x) / len;
+      pos.push(pts[i].x + nx * half, 0.35, pts[i].z + nz * half, pts[i].x - nx * half, 0.35, pts[i].z - nz * half);
+      if (i > 0) {
+        const k = i * 2;
+        idx.push(k - 2, k - 1, k, k - 1, k + 1, k);
+      }
+    }
+    const g = this.stroke.mesh.geometry;
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.computeBoundingSphere();
   }
 
   // ------------------------------------------------------------ caméra

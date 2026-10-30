@@ -3,6 +3,7 @@ import { attachTo, findSnap, freeSpot } from './core/snap';
 import type { Placed, Project } from './core/types';
 import { Store, emptyProject } from './editor/store';
 import { DEFAULT_PARAMS, generatePark, type GenParams } from './generator/generator';
+import { followStroke } from './generator/freehand';
 import { randomSeed } from './generator/rng';
 import { TEMPLATES } from './generator/templates';
 import { autosave, downloadCSV, downloadJSON, downloadPNG, loadAutosave, parseProject, printReport, projectFromHash, shareLink } from './io/export';
@@ -268,6 +269,23 @@ for (const [k, label] of viewButtons) {
   vt.appendChild(b);
 }
 vt.appendChild(Object.assign(document.createElement('span'), { className: 'vsep' }));
+// stylo main levée
+const penBtn = document.createElement('button');
+penBtn.className = 'pen';
+penBtn.textContent = '✏️ Stylo';
+penBtn.title = 'Tracer un parcours à main levée : les modules se posent sur le tracé (P)';
+penBtn.onclick = () => setPen(!viewport.penMode);
+vt.prepend(Object.assign(document.createElement('span'), { className: 'vsep' }));
+vt.prepend(penBtn);
+const hintDefault = $('#hint').innerHTML;
+function setPen(on: boolean) {
+  viewport.setPenMode(on);
+  penBtn.classList.toggle('on', on);
+  $('#hint').innerHTML = on
+    ? '<b>Stylo actif</b> · tracez le parcours au clic gauche, relâchez pour poser les modules · commencez près d’une connexion verte pour prolonger un parc · <b>Clic droit</b> panoramique · <b>Échap</b> ou <b>P</b> pour quitter'
+    : hintDefault;
+}
+
 for (const [label, fn] of [
   ['3D', () => viewport.frameAll(false)],
   ['Vue de dessus', () => viewport.frameAll(true)],
@@ -309,6 +327,19 @@ function refreshUI() {
 store.on(refreshUI);
 
 viewport.onDropModule = (type, x, z) => addModule(type, { x, z });
+viewport.onStroke = (pts) => {
+  const params = { ...genParams, audience: store.project.audience, seed: randomSeed() };
+  const res = followStroke(store.project.site, store.project.modules, pts, params);
+  if (!res || !res.modules.length) {
+    toast('Aucun module ne peut suivre ce tracé ici (trop court, trop près du bord ou d’autres modules).');
+    return;
+  }
+  const added = res.modules.map((m) => ({ ...m, uid: store.newUid() }));
+  store.update((p) => p.modules.push(...added));
+  store.select(added.map((m) => m.uid));
+  const pct = Math.round(res.coverage * 100);
+  toast(`✏️ ${added.length} modules posés sur ${Math.round(res.length)} m de tracé${res.extended ? ' (parc prolongé)' : ''}${pct < 90 ? ` — ${pct} % du tracé couvert` : ''}. Ctrl+Z pour annuler.`);
+};
 const tip = $('#tooltip');
 viewport.onHover = (m, x, y) => {
   if (!m) {
@@ -401,7 +432,11 @@ window.addEventListener('keydown', (e) => {
   if (k === 'r') return rotateSelection(e.shiftKey ? 15 : 90);
   if (k === 'g') return randomPark();
   if (k === 'f') return viewport.focusSelection();
-  if (k === 'escape') return store.select([]);
+  if (k === 'p') return setPen(!viewport.penMode);
+  if (k === 'escape') {
+    if (viewport.penMode) return setPen(false);
+    return store.select([]);
+  }
   const step = e.shiftKey ? 0.1 : 0.5;
   if (e.key === 'ArrowLeft') return e.preventDefault(), nudge(-step, 0);
   if (e.key === 'ArrowRight') return e.preventDefault(), nudge(step, 0);

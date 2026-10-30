@@ -33,6 +33,7 @@ Puis ouvrir l'URL affichée (par défaut http://localhost:5173). Build de produc
 | Contrôle des règles | 15 règles (chevauchement, distance au bord, profondeur, zones de glisse, anti-coincement, accès, transitions de hauteur, enchaînements, surveillance, public…) — cliquer sur une alerte sélectionne les modules concernés. |
 | Devis | Total HT, capacité, emprise, nomenclature, produits à prévoir (ancrages, bouées, gilets, bateau). |
 | 🎲 Générateur | Parc cohérent selon public, capacité, intensité, boucle InfinityLoop, grand toboggan, modules autonomes. Déterministe par graine. |
+| ✏️ Stylo main levée | Bouton « Stylo » (touche P) : tracez un parcours sur l'eau, au relâchement les modules se posent le long du tracé en respectant toutes les règles (virages, jonctions, enchaînements, fin de parcours). Commencer près d'une connexion libre prolonge un parc existant. Annulable en un Ctrl+Z. |
 | Modèles de parcs | Kids Lagoon, Family Beach, AquaTrack, SportsPark XL, Lake Resort. |
 | Exports | Devis PDF (impression), liste Excel (CSV), projet JSON, capture PNG, lien de partage (projet encodé dans l'URL). Sauvegarde automatique dans le navigateur. |
 
