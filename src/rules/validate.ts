@@ -1,6 +1,7 @@
 import { ACCESSORIES, spec } from '../catalog/modules';
 import { moduleOBB, obbCorners, obbDistance, obbInsideRect, obbOverlap, zoneOBB } from '../core/geometry';
 import { buildGraph, components, freePorts, loopCount, near, type ParkGraph } from '../core/graph';
+import { computeAnchors } from '../core/anchors';
 import type { Audience, Issue, Placed, Project, Vec2 } from '../core/types';
 
 /*
@@ -277,6 +278,8 @@ export function computeStats(project: Project, graph: ParkGraph = buildGraph(pro
     perim += Math.hypot(a.x - b.x, a.z - b.z);
   }
   const buoys = perimeter.length > 2 ? Math.ceil(perim / 4.5) : 0;
+  // ancres réellement posées (mutualisées entre modules voisins)
+  anchors = computeAnchors(mods).length;
   const lifejackets = Math.ceil(capacity * 1.2);
   const boats = mods.length ? 1 : 0;
   const accessoriesPrice = anchors * ACCESSORIES.anchor.price + buoys * ACCESSORIES.buoy.price + lifejackets * ACCESSORIES.lifejacket.price + boats * ACCESSORIES.boat.price;

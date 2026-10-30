@@ -34,7 +34,14 @@ export interface GenParams {
   /** Ajouter des modules autonomes (Volley, Bouncer…) autour du parc. */
   standalones: boolean;
   seed: string;
+  /** Budget maximal HT (modules + produits à prévoir), 0 = sans limite. */
+  budget?: number;
+  /** Stock de modules déjà possédés (id -> quantité) : utilisés en priorité, sans coût. */
+  stock?: Record<string, number>;
 }
+
+/** Les produits à prévoir (ancrages, bouées, gilets…) représentent ~15 % du prix des modules. */
+export const ACCESSORY_FACTOR = 1.15;
 
 export const DEFAULT_PARAMS: GenParams = {
   audience: 'mixed',
@@ -48,6 +55,9 @@ export const DEFAULT_PARAMS: GenParams = {
 
 export interface GenResult {
   modules: Placed[];
+  /** Montant des modules achetés (hors stock). */
+  spent?: number;
+  stockUsed?: number;
   attempts: number;
   score: number;
   log: string[];
@@ -74,6 +84,11 @@ export class Builder {
   used = new Map<string, number>();
   cap = 0;
   bigSlidePlaced = false;
+  /** Montant dépensé en modules achetés (hors stock et hors parc existant). */
+  spent = 0;
+  stockLeft = new Map<string, number>();
+  /** Nombre de modules existants (non modifiables) en tête de `mods`. */
+  lockCount = 0;
   private n = 0;
   readonly allowed: ModuleSpec[];
   readonly targetDiff: number;
@@ -89,6 +104,40 @@ export class Builder {
     this.allowed = MODULES.filter((s) => s.depth <= site.depth && (s.role === 'watch' || (s.H <= lim.maxH && s.diff <= lim.maxDiff)));
     this.targetDiff = Math.min(lim.maxDiff, 1 + (p.intensity - 1) * 0.9);
     this.maxRun = p.intensity >= 4 ? 4 : 3;
+    this.stockLeft = new Map(Object.entries(p.stock ?? {}));
+  }
+
+  /** Parc existant conservé tel quel : la génération part de ses connexions libres. */
+  seed(existing: Placed[]) {
+    this.mods = existing.map((m) => ({ ...m }));
+    this.lockCount = this.mods.length;
+    this.rebuild();
+  }
+
+  get budget() {
+    return this.p.budget ?? 0;
+  }
+
+  /** Le module peut-il être posé (stock disponible ou budget suffisant) ? */
+  canUse(type: string): boolean {
+    if ((this.stockLeft.get(type) ?? 0) > 0) return true;
+    if (this.p.stock && !this.budget) return false;
+    if (this.budget > 0) return (this.spent + spec(type).price) * ACCESSORY_FACTOR <= this.budget;
+    return true;
+  }
+
+  /** Plus rien d'achetable ni en stock. */
+  exhausted(): boolean {
+    const stockLeft = [...this.stockLeft.values()].some((n) => n > 0);
+    if (stockLeft) return false;
+    if (this.p.stock && !this.budget) return true;
+    return this.budget > 0 && (this.spent + 2400) * ACCESSORY_FACTOR > this.budget;
+  }
+
+  private consume(type: string) {
+    const left = this.stockLeft.get(type) ?? 0;
+    if (left > 0) this.stockLeft.set(type, left - 1);
+    else this.spent += spec(type).price;
   }
 
   // ------------------------------------------------------------ état
@@ -109,6 +158,9 @@ export class Builder {
     this.used = new Map();
     this.cap = 0;
     this.bigSlidePlaced = false;
+    this.spent = 0;
+    this.stockLeft = new Map(Object.entries(this.p.stock ?? {}));
+    for (const m of this.mods.slice(this.lockCount)) this.consume(m.type);
     for (const m of this.mods) {
       this.used.set(m.type, (this.used.get(m.type) ?? 0) + 1);
       if (spec(m.type).role !== 'watch') this.cap += spec(m.type).cap;
@@ -182,12 +234,13 @@ export class Builder {
     this.used.set(type, (this.used.get(type) ?? 0) + 1);
     if (s.role !== 'watch') this.cap += s.cap;
     if (BIG_SLIDES.slice(0, 3).includes(type)) this.bigSlidePlaced = true;
+    this.consume(type);
     return p;
   }
 
   /** Essaie d'accrocher `type` au port ouvert `op`, éventuellement en imposant la direction de sortie. */
   attach(type: string, op: OpenPort, wantDir?: { x: number; z: number }): Placed | null {
-    if (!this.isFree(op)) return null;
+    if (!this.isFree(op) || !this.canUse(type)) return null;
     const s = spec(type);
     const inPorts = this.rng.shuffle([...s.ports]);
     for (const port of inPorts) {
@@ -227,9 +280,19 @@ export class Builder {
     return (type === prev ? 0.08 : 1) / (1 + 1.5 * n);
   }
 
+  /** Modules autorisés ET disponibles (stock ou budget). */
+  usable(): ModuleSpec[] {
+    return this.allowed.filter((s) => this.canUse(s.id));
+  }
+
+  /** Les modules du stock sont fortement privilégiés. */
+  stockBoost(id: string) {
+    return (this.stockLeft.get(id) ?? 0) > 0 ? 6 : 1;
+  }
+
   obstacleCandidates(prev: ModuleSpec | null, run: { expert: number }): { item: string; w: number }[] {
     const out: { item: string; w: number }[] = [];
-    for (const s of this.allowed) {
+    for (const s of this.usable()) {
       if (s.role !== 'obstacle' && s.role !== 'tower') continue;
       if (s.ports.length !== 2) continue;
       if (prev && (prev.role === 'obstacle' || prev.role === 'tower') && Math.abs(prev.H - s.H) >= RULES.maxHeightStep) continue;
@@ -237,7 +300,7 @@ export class Builder {
       let w = Math.exp(-Math.abs(s.diff - this.targetDiff) * 0.9) * this.novelty(s.id, prev?.id);
       if (s.role === 'tower') w *= 0.7;
       if (s.category === 'matchtrack') w *= this.p.audience === 'sport' ? 1.6 : 0.5;
-      out.push({ item: s.id, w });
+      out.push({ item: s.id, w: w * this.stockBoost(s.id) });
     }
     return out;
   }
@@ -261,7 +324,7 @@ export class Builder {
       'comeback-sus': 0.4,
     };
     const out: { item: string; w: number }[] = [];
-    for (const s of this.allowed) {
+    for (const s of this.usable()) {
       if (s.role !== 'connector' || base[s.id] === undefined) continue;
       let w = base[s.id] * this.novelty(s.id, prev?.id);
       const isTurn = s.ports.length === 2 && s.ports[0].dx * s.ports[1].dx + s.ports[0].dz * s.ports[1].dz > -0.5;
@@ -269,21 +332,21 @@ export class Builder {
       if (s.id === 'junction' || s.id === 't-connect-sus') w = Math.max(w, 0.8);
       if (prev && prev.H >= 2.4 && s.H >= 2.4) continue;
       if (s.diff > this.targetDiff + 1.5) w *= 0.3;
-      out.push({ item: s.id, w });
+      out.push({ item: s.id, w: w * this.stockBoost(s.id) });
     }
     return out;
   }
 
   terminalCandidates(): { item: string; w: number }[] {
     const out: { item: string; w: number }[] = [];
-    for (const s of this.allowed) {
+    for (const s of this.usable()) {
       if (s.role !== 'terminal') continue;
       let w = { slope: 3, takeoff: 1.2, actionloop: 1, springboard: 0.8, endrise: 0.6, wave: 0.6, mountain: 0.6 }[s.id] ?? 0.5;
       if (this.p.bigSlide && !this.bigSlidePlaced && BIG_SLIDES.slice(0, 3).includes(s.id)) w *= 25;
       if (!this.p.bigSlide && (s.id === 'wave' || s.id === 'mountain')) w = 0;
       if (s.id === 'endrise' && !this.mods.some((m) => spec(m.type).category === 'matchtrack')) w *= 0.2;
       w *= this.novelty(s.id) + 0.3;
-      out.push({ item: s.id, w });
+      out.push({ item: s.id, w: w * this.stockBoost(s.id) });
     }
     return out;
   }
@@ -300,9 +363,14 @@ export class Builder {
           : big
             ? ['startgate-sus', 'step6', 'base-sus']
             : ['base-sus', 'step6', 'base', 'startgate-sus'];
+    // accès du stock en priorité, puis préférences ; à défaut un connecteur disponible
+    const stockEntries = [...this.stockLeft.entries()].filter(([id, n]) => n > 0 && (spec(id).role === 'entry' || spec(id).stepUp) && spec(id).ports.some((pp) => pp.id === 'b')).map(([id]) => id);
+    let types = [...stockEntries, ...prefs].filter((t) => this.canUse(t));
+    if (!types.length) types = this.usable().filter((s) => s.role === 'connector' && s.ports.some((pp) => pp.id === 'b')).map((s) => s.id);
+    if (!types.length) return null;
     const hx = this.site.length / 2 - RULES.edgeMargin;
     for (let attempt = 0; attempt < 12; attempt++) {
-      const type = prefs[Math.min(prefs.length - 1, Math.floor(attempt / 4))];
+      const type = types[Math.min(types.length - 1, Math.floor(attempt / 4))];
       const s = spec(type);
       const out = s.ports.find((pp) => pp.id === 'b')!;
       // port de sortie orienté vers le large (−z)
@@ -311,7 +379,7 @@ export class Builder {
       const x = (this.rng.next() * 2 - 1) * span * 0.6;
       const z = this.site.width / 2 - RULES.edgeMargin - s.L / 2;
       const tf = { x, z, rot };
-      if (!this.fits(s, tf, null)) continue;
+      if (!this.canUse(type) || !this.fits(s, tf, null)) continue;
       const p = this.place(type, tf);
       const ports = this.portsOf(p.uid);
       // si Base (2 ports) : l'extrémité côté plage reste un accès libre
@@ -345,7 +413,7 @@ export class Builder {
     const startLen = this.mods.length;
     const history: OpenPort[] = [];
     while (cur) {
-      const mustEnd = count >= maxModules || this.cap >= capGoal;
+      const mustEnd = count >= maxModules || this.cap >= capGoal || this.exhausted();
       if (mustEnd) {
         this.tryTerminal(cur);
         break;
@@ -410,9 +478,9 @@ export class Builder {
    * Les longueurs opposées sont égales, la boucle se referme donc exactement.
    */
   tryRing(op: OpenPort): OpenPort | null {
-    const corners = this.allowed.filter((s) => s.loopCorner && s.diff <= this.targetDiff + 1).map((s) => s.id);
+    const corners = this.usable().filter((s) => s.loopCorner && s.diff <= this.targetDiff + 1).map((s) => s.id);
     if (!corners.length) return null;
-    const straight = this.allowed.filter((s) => (s.role === 'obstacle' || (s.role === 'tower' && s.H < 2.6)) && s.ports.length === 2 && (s.L === 3 || s.L === 6) && s.W <= 3.2 && s.ports[0].w <= 2);
+    const straight = this.usable().filter((s) => (s.role === 'obstacle' || (s.role === 'tower' && s.H < 2.6)) && s.ports.length === 2 && (s.L === 3 || s.L === 6) && s.W <= 3.2 && s.ports[0].w <= 2);
     if (!straight.length) return null;
     const combos: { a: number; b: number; m: number }[] = [];
     for (const a of [0, 3, 6]) for (const b of [0, 3]) for (const m of [3, 6, 9]) combos.push({ a, b, m });
@@ -555,7 +623,8 @@ export class Builder {
   }
 
   placeStandalones() {
-    const pool = this.allowed.filter((s) => s.role === 'standalone' && s.id !== 'pologoal' && s.id !== 'triplescore');
+    const pool = this.usable().filter((s) => s.role === 'standalone' && s.id !== 'pologoal' && s.id !== 'triplescore');
+    if (!pool.length) return;
     const n = this.rng.int(1, 3);
     for (let k = 0; k < n; k++) {
       const s = this.rng.pick(pool);
@@ -609,7 +678,7 @@ function attempt(site: Site, p: GenParams, rng: Rng): Builder {
 
   // branches
   let guard = 0;
-  while (b.cap < p.capacity * 0.95 && guard++ < 40) {
+  while (b.cap < p.capacity * 0.95 && !b.exhausted() && guard++ < 40) {
     b.branchQueue = b.branchQueue.filter((q) => b.isFree(q));
     let op = b.branchQueue.length ? b.branchQueue.splice(rng.int(0, b.branchQueue.length - 1), 1)[0] : null;
     if (!op) {
@@ -644,6 +713,77 @@ export function scorePark(project: Project, target: GenParams): number {
   return s;
 }
 
+/** Pénalités liées au budget et au stock (stock non utilisé, dépassement). */
+function resourceScore(b: Builder, p: GenParams): number {
+  let s = 0;
+  if (p.budget && p.budget > 0) {
+    const total = b.spent * ACCESSORY_FACTOR;
+    if (total > p.budget) s += 500;
+    s += ((p.budget - total) / p.budget) * 40; // budget bien utilisé
+  }
+  if (p.stock) {
+    const owned = Object.values(p.stock).reduce((a, n) => a + n, 0);
+    const left = [...b.stockLeft.values()].reduce((a, n) => a + n, 0);
+    if (owned) s += (left / owned) * 300;
+  }
+  return s;
+}
+
+export interface ExtendResult {
+  /** Nouveaux modules seulement. */
+  modules: Placed[];
+  spent: number;
+  stockUsed: number;
+  score: number;
+}
+
+/**
+ * Agrandit un parc existant (conservé tel quel) avec un budget et/ou un stock :
+ * on fait pousser des branches depuis ses connexions libres, avec les mêmes règles.
+ */
+export function extendPark(site: Site, existing: Placed[], params: GenParams, attempts = 10): ExtendResult | null {
+  const base = hashSeed(params.seed);
+  let best: { b: Builder; score: number } | null = null;
+  for (let k = 0; k < attempts; k++) {
+    const rng = makeRng(base + k * 6131);
+    const b = new Builder(site, { ...params, capacity: Infinity }, rng);
+    b.seed(existing);
+    let guard = 0;
+    while (!b.exhausted() && guard++ < 60) {
+      const ports = b.free.filter((f) => {
+        const role = spec(b.mods.find((m) => m.uid === f.uid)!.type).role;
+        return role !== 'terminal' && b.clearance(f) > 5;
+      });
+      if (!ports.length) break;
+      // priorité aux jonctions, puis aux extrémités d'obstacles
+      const conn = ports.filter((f) => spec(b.mods.find((m) => m.uid === f.uid)!.type).role === 'connector');
+      const op = rng.pick(conn.length && rng.next() < 0.75 ? conn : ports);
+      const before = b.mods.length;
+      b.growTrail(op, rng.int(2, 5), Infinity);
+      if (b.mods.length === before) {
+        // port inexploitable : on le neutralise pour ne pas boucler
+        b.free = b.free.filter((f) => !(f.uid === op.uid && f.portId === op.portId));
+      }
+    }
+    b.closeDeadEnds();
+    b.placeAccesses();
+    b.placeWatch();
+    if (b.mods.length === existing.length) continue;
+    const project: Project = { version: 1, name: '', site, audience: params.audience, modules: b.mods };
+    const graph = buildGraph(project.modules);
+    const issues = validate(project, graph);
+    const errors = issues.filter((i) => i.level === 'error').length;
+    const warnings = issues.filter((i) => i.level === 'warning').length;
+    const variety = new Set(b.mods.slice(existing.length).map((m) => m.type)).size;
+    const score = errors * 1000 + warnings * 25 + resourceScore(b, params) - variety * 2;
+    if (!best || score < best.score) best = { b, score };
+  }
+  if (!best) return null;
+  const owned = Object.values(params.stock ?? {}).reduce((a, n) => a + n, 0);
+  const left = [...best.b.stockLeft.values()].reduce((a, n) => a + n, 0);
+  return { modules: best.b.mods.slice(existing.length), spent: best.b.spent, stockUsed: owned - left, score: best.score };
+}
+
 export function generatePark(site: Site, params: GenParams, attempts = 14): GenResult {
   const base = hashSeed(params.seed);
   let best: { b: Builder; score: number } | null = null;
@@ -652,11 +792,16 @@ export function generatePark(site: Site, params: GenParams, attempts = 14): GenR
     const b = attempt(site, params, rng);
     if (!b.mods.length) continue;
     const project: Project = { version: 1, name: '', site, audience: params.audience, modules: b.mods };
-    const score = scorePark(project, params);
+    const score = scorePark(project, params) + resourceScore(b, params);
     if (!best || score < best.score) best = { b, score };
   }
   if (!best) return { modules: [], attempts, score: Infinity, log: ['Aucun parc possible : plan d’eau trop petit ou trop peu profond.'] };
   // uid stables et lisibles
   const modules = best.b.mods.map((m, i) => ({ ...m, uid: `m${i + 1}` }));
-  return { modules, attempts, score: best.score, log: best.b.log };
+  const owned = Object.values(params.stock ?? {}).reduce((a, n) => a + n, 0);
+  const left = [...best.b.stockLeft.values()].reduce((a, n) => a + n, 0);
+  const log = [...best.b.log];
+  if (params.stock) log.push(`Stock utilisé : ${owned - left} / ${owned} modules.`);
+  if (params.budget || params.stock) log.push(`Achats : ${Math.round(best.b.spent)} € HT de modules.`);
+  return { modules, attempts, score: best.score, log, spent: best.b.spent, stockUsed: owned - left };
 }

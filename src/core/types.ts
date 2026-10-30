@@ -96,6 +96,16 @@ export interface Site {
   width: number;
   /** Profondeur d'eau disponible (m). */
   depth: number;
+  /** Géoréférencement (plan d'ancrage GPS). */
+  geo?: Geo;
+}
+
+export interface Geo {
+  /** Centre du plan d'eau (WGS84). */
+  lat: number;
+  lon: number;
+  /** Azimut (degrés depuis le nord) de la direction « vers le large », perpendiculaire au rivage. */
+  bearing: number;
 }
 
 export interface Project {
@@ -104,6 +114,8 @@ export interface Project {
   site: Site;
   audience: Audience;
   modules: Placed[];
+  /** Stock de modules possédés (parc existant / inventaire) : id -> quantité. */
+  inventory?: Record<string, number>;
 }
 
 export type IssueLevel = 'error' | 'warning' | 'info';

@@ -12,6 +12,9 @@ import { AUDIENCE_LIMITS } from './rules/validate';
 import { renderThumbnails } from './scene/thumbnails';
 import { Viewport } from './scene/viewport';
 import { icon } from './ui/icons';
+import { exportAnchors, printAnchorPlan } from './io/anchorplan';
+import { eur } from './io/export';
+import { seasonFlyout } from './ui/season';
 import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
 
 const store = new Store();
@@ -133,7 +136,7 @@ function runGenerator(params: GenParams, opts: { site?: Project['site']; name?: 
   store.setProject({ ...store.project, name: opts.name ?? `Parc ${params.seed}`, site, audience: params.audience, modules: res.modules });
   viewport.frameAll();
   const st = store.derived.stats;
-  toast(`${st.modules} modules · ${st.capacity} personnes${st.loops ? ' · boucle' : ''} — variante « ${params.seed} »`);
+  toast(`${st.modules} modules · ${st.capacity} personnes · ${eur(st.total)}${st.loops ? ' · boucle' : ''} — variante « ${params.seed} »`);
 }
 
 function randomPark() {
@@ -153,6 +156,7 @@ function openGeneratorDialog() {
       <label class="field full">Public${seg('audience', (Object.keys(AUDIENCE_LIMITS) as GenParams['audience'][]).map((a) => [a, AUDIENCE_LIMITS[a].label.split(' (')[0]]), p.audience)}</label>
       <label class="field full">Capacité visée<div class="range-row"><input type="range" min="15" max="250" step="5" data-k="capacity" value="${p.capacity}"><output>${p.capacity}</output></div></label>
       <label class="field full">Intensité<div class="range-row"><input type="range" min="1" max="5" step="1" data-k="intensity" value="${p.intensity}"><output>${p.intensity}</output></div></label>
+      <label class="field full">Budget maximum (HT, produits à prévoir inclus)<div class="range-row"><input type="range" min="0" max="1000000" step="10000" data-k="budget" value="${p.budget ?? 0}"><output>${p.budget ? eur(p.budget) : 'Sans limite'}</output></div></label>
       <div class="field full">Options<div class="checks">${check('loop', 'Boucle InfinityLoop')}${check('bigSlide', 'Grand toboggan')}${check('standalones', 'Modules autonomes')}</div></div>
       <label class="field full">Variante<input data-k="seed" value="${esc(p.seed)}"></label>
     </div>
@@ -169,8 +173,9 @@ function openGeneratorDialog() {
   );
   dlg.querySelectorAll<HTMLInputElement>('input[type=range]').forEach((r) => {
     r.oninput = () => {
-      (r.nextElementSibling as HTMLOutputElement).value = r.value;
-      (p as any)[r.dataset.k!] = Number(r.value);
+      const v = Number(r.value);
+      (r.nextElementSibling as HTMLOutputElement).value = r.dataset.k === 'budget' ? (v ? eur(v) : 'Sans limite') : r.value;
+      (p as any)[r.dataset.k!] = v;
     };
   });
   dlg.querySelectorAll<HTMLInputElement>('input[type=checkbox]').forEach((c) => (c.onchange = () => ((p as any)[c.dataset.k!] = c.checked)));
@@ -274,6 +279,32 @@ function openFlyout(name: string) {
   flyout = name;
   el.innerHTML = '';
   if (name === 'site') el.appendChild(siteFlyout(store, () => catalog.redraw()));
+  if (name === 'season') {
+    const draw = () => {
+      el.innerHTML = '';
+      el.appendChild(
+        seasonFlyout(
+          {
+            store,
+            params: () => genParams,
+            toast,
+            frame: () => viewport.frameAll(),
+            apply: (mods, newName) => {
+              const before = new Set(store.project.modules.map((m) => m.uid));
+              const withUids = mods.map((m) => (m.uid && before.has(m.uid) ? m : { ...m, uid: store.newUid() }));
+              store.update((p) => {
+                p.modules = withUids;
+                if (newName) p.name = newName;
+              });
+              store.select(withUids.filter((m) => !before.has(m.uid)).map((m) => m.uid));
+            },
+          },
+          draw,
+        ),
+      );
+    };
+    draw();
+  }
   if (name === 'templates') {
     el.appendChild(h(`<h3>Modèles de parcs</h3>`));
     const list = h(`<div class="tpl-list"></div>`);
@@ -336,7 +367,8 @@ function refreshRail() {
     null,
     ['grid', 'Catalogue', 'C', () => (closeFlyout(), catalog.toggle()), catalog.isOpen()],
     ['layout', 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
-    ['waves', "Plan d'eau & public", '', () => openFlyout('site'), flyout === 'site'],
+    ['waves', "Plan d'eau, public & GPS", '', () => openFlyout('site'), flyout === 'site'],
+    ['package', 'Mon parc & saison prochaine', '', () => openFlyout('season'), flyout === 'season'],
     null,
     ['cube', 'Vue 3D', '', () => viewport.frameAll(false), false],
     ['top', 'Vue de dessus', '', () => viewport.frameAll(true), false],
@@ -386,9 +418,25 @@ exportMenu.innerHTML = [
   ['png', 'image', "Capture d'écran"],
   ['json', 'download', 'Fichier projet (.json)'],
   ['share', 'share', 'Copier le lien de partage'],
+  ['-', '', "Plan d'ancrage"],
+  ['anchors-gpx', 'anchor', 'GPS Garmin / traceur (.gpx)'],
+  ['anchors-kml', 'anchor', 'Téléphone, Google Earth (.kml)'],
+  ['anchors-csv', 'table', 'Coordonnées (.csv)'],
+  ['anchors-print', 'file', 'Plan imprimable'],
 ]
-  .map(([a, ic, l]) => `<button data-action="${a}">${icon(ic, 17)}${l}</button>`)
+  .map(([a, ic, l]) => (a === '-' ? `<div class="menu-title">${l}</div>` : `<button data-action="${a}">${icon(ic, 17)}${l}</button>`))
   .join('');
+
+/** Le plan d'ancrage exige la position GPS du plan d'eau. */
+function withGeo(fn: (geo: NonNullable<Project['site']['geo']>) => void) {
+  if (!store.project.modules.length) return toast('Aucun module : rien à ancrer.');
+  const geo = store.project.site.geo;
+  if (!geo) {
+    openFlyout('site');
+    return toast('Renseignez la position GPS du plan d’eau (panneau Plan d’eau) pour exporter le plan d’ancrage.');
+  }
+  fn(geo);
+}
 
 const nameInput = $<HTMLInputElement>('#project-name');
 nameInput.onchange = () => store.update((p) => (p.name = nameInput.value || 'Parc sans nom'));
@@ -493,6 +541,10 @@ const actions: Record<string, (btn: HTMLElement) => void> = {
       toast('Lien de partage placé dans la barre d’adresse');
     }
   },
+  'anchors-gpx': () => withGeo((g) => exportAnchors(store.project, g, 'gpx')),
+  'anchors-kml': () => withGeo((g) => exportAnchors(store.project, g, 'kml')),
+  'anchors-csv': () => withGeo((g) => exportAnchors(store.project, g, 'csv')),
+  'anchors-print': () => withGeo((g) => !printAnchorPlan(store.project, g) && toast('Autorisez les fenêtres pop-up pour imprimer le plan')),
   undo: () => store.undo(),
   redo: () => store.redo(),
   random: randomPark,

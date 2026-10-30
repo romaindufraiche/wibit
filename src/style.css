@@ -1022,3 +1022,146 @@ select {
     display: none;
   }
 }
+
+/* tableau de bord replié */
+.hud.collapsed {
+  width: auto;
+  padding: 6px;
+}
+.hud-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 10px;
+}
+.hud-pill:hover {
+  background: var(--surface-hover);
+}
+.hud-pill span:not(.dot) {
+  color: var(--muted);
+  font-size: 12px;
+}
+.hud-pill .ico {
+  color: var(--muted);
+}
+.hud-total {
+  gap: 8px;
+}
+.hud-total span {
+  flex: 1;
+  text-align: right;
+}
+.hud-fold {
+  width: 28px;
+  height: 28px;
+  transform: rotate(180deg);
+}
+.menu .menu-title {
+  padding: 8px 10px 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* mon parc & saison */
+.muted-inline {
+  float: right;
+  color: var(--faint);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+.inv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow: auto;
+  margin-bottom: 8px;
+}
+.inv-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px 5px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.inv-row:hover {
+  background: var(--surface);
+}
+.inv-row .grow {
+  flex: 1;
+}
+.inv-row small {
+  color: var(--faint);
+}
+.inv-row b {
+  min-width: 20px;
+  text-align: center;
+}
+.qty {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.qty:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+.inv-add select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+.inv-add select option {
+  background: #152233;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.season-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.season-actions .btn {
+  height: auto;
+  padding: 10px 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.season-actions .btn span {
+  font-weight: 400;
+  font-size: 11.5px;
+  opacity: 0.8;
+}
+.result {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  font-size: 12.5px;
+}
+.result-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { spec } from '../catalog/modules';
+import { computeAnchors } from '../core/anchors';
 import { moduleOBB, obbCorners } from '../core/geometry';
 import { findSnap } from '../core/snap';
 import type { Placed } from '../core/types';
@@ -36,7 +37,7 @@ const ZONE_MATS = {
   jump: new THREE.MeshBasicMaterial({ color: 0xff4fa3, transparent: true, opacity: 0.22, depthWrite: false }),
 };
 const STROKE_MAT = new THREE.MeshBasicMaterial({ color: 0xffc20e, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.9 });
-const ANCHOR_GEO = new THREE.SphereGeometry(0.18, 10, 8);
+const ANCHOR_GEO = new THREE.SphereGeometry(0.28, 12, 8);
 const ANCHOR_MAT = new THREE.MeshStandardMaterial({ color: 0xff3b30 });
 const zoneGeos = new Map<string, THREE.PlaneGeometry>();
 function zoneGeo(hx: number, hz: number) {
@@ -66,6 +67,7 @@ export class Viewport {
   private objs = new Map<string, ModObj>();
   private siteGroup = new THREE.Group();
   private buoyGroup = new THREE.Group();
+  private anchorGroup = new THREE.Group();
   private sun = new THREE.DirectionalLight(0xffffff, 2.2);
   private raycaster = new THREE.Raycaster();
   private ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -97,7 +99,7 @@ export class Viewport {
     this.controls.maxDistance = 600;
 
     this.setupEnvironment();
-    this.scene.add(this.siteGroup, this.buoyGroup);
+    this.scene.add(this.siteGroup, this.buoyGroup, this.anchorGroup);
 
     const ro = new ResizeObserver(() => this.resize());
     ro.observe(container);
@@ -231,6 +233,7 @@ export class Viewport {
       }
     }
     this.updateBuoys();
+    this.updateAnchors();
   }
 
   private createObj(m: Placed): ModObj {
@@ -283,18 +286,15 @@ export class Viewport {
         o.overlays.add(mesh);
       }
     }
-    if (this.opts.anchors) {
-      const n = s.anchors;
-      const corners = obbCorners({ cx: 0, cz: 0, hx: s.L / 2 + 1.2, hz: s.W / 2 + 1.2, rot: 0 });
-      for (let i = 0; i < n; i++) {
-        const a = corners[i % 4],
-          b = corners[(i + 1) % 4];
-        const t = Math.floor(i / 4) * 0.5;
-        const pos = { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
-        const buoy = new THREE.Mesh(ANCHOR_GEO, ANCHOR_MAT);
-        buoy.position.set(pos.x, 0.05, pos.z);
-        o.overlays.add(buoy);
-      }
+  }
+
+  private updateAnchors() {
+    this.anchorGroup.clear();
+    if (!this.opts.anchors) return;
+    for (const a of computeAnchors(this.store.project.modules)) {
+      const m = new THREE.Mesh(ANCHOR_GEO, ANCHOR_MAT);
+      m.position.set(a.x, 0.05, a.z);
+      this.anchorGroup.add(m);
     }
   }
 

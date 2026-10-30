@@ -147,6 +147,7 @@ export function renderHotbar(recent: string[], catalogOpen: boolean, onAdd: (t: 
 
 let rulesOpen = false;
 let detailsOpen = false;
+let hudCollapsed = false;
 
 export function renderHud(store: Store, onPick: (uids: string[]) => void) {
   const el = document.getElementById('hud')!;
@@ -156,8 +157,17 @@ export function renderHud(store: Store, onPick: (uids: string[]) => void) {
   const warnings = issues.filter((i) => i.level === 'warning').length;
   const lvl = !st.modules ? 'info' : errors ? 'error' : warnings ? 'warning' : 'ok';
   const label = !st.modules ? 'Aucun module' : errors ? `${errors} erreur${errors > 1 ? 's' : ''}${warnings ? ` · ${warnings} alerte${warnings > 1 ? 's' : ''}` : ''}` : warnings ? `${warnings} alerte${warnings > 1 ? 's' : ''}` : 'Parc conforme';
+  el.classList.toggle('collapsed', hudCollapsed);
+  if (hudCollapsed) {
+    el.innerHTML = `<button class="hud-pill" title="Déplier le tableau de bord"><span class="dot ${lvl}"></span><b>${eur(st.total)}</b><span>${st.capacity} pers.</span>${icon('chevron', 16)}</button>`;
+    el.querySelector<HTMLElement>('.hud-pill')!.onclick = () => {
+      hudCollapsed = false;
+      renderHud(store, onPick);
+    };
+    return;
+  }
   el.innerHTML = `
-    <div class="hud-total"><b>${eur(st.total)}</b><span>HT estimé</span></div>
+    <div class="hud-total"><b>${eur(st.total)}</b><span>HT estimé</span><button class="icon-btn hud-fold" title="Replier">${icon('chevron', 16)}</button></div>
     <div class="stats">
       <div class="stat"><b>${st.capacity}</b><span>personnes</span></div>
       <div class="stat"><b>${st.modules}</b><span>modules</span></div>
@@ -191,6 +201,10 @@ export function renderHud(store: Store, onPick: (uids: string[]) => void) {
       </div>`),
     );
   }
+  el.querySelector<HTMLElement>('.hud-fold')!.onclick = () => {
+    hudCollapsed = true;
+    renderHud(store, onPick);
+  };
   el.querySelector<HTMLElement>('[data-a=rules]')!.onclick = () => {
     rulesOpen = !rulesOpen;
     renderHud(store, onPick);
@@ -259,7 +273,35 @@ export function siteFlyout(store: Store, onChange: () => void): HTMLElement {
       <label class="field">Public<select data-k="audience">${(Object.keys(AUDIENCE_LIMITS) as Audience[]).map((a) => `<option value="${a}" ${a === audience ? 'selected' : ''}>${AUDIENCE_LIMITS[a].label}</option>`).join('')}</select></label>
     </div>
     <div class="note">Dimensions en mètres. La plage est en bas de la scène ; la ligne orange marque la distance de sécurité de 3 m aux bords.</div>
+    <h3 style="margin-top:20px">Position GPS</h3>
+    <div class="fields">
+      <label class="field">Latitude (centre)<input type="number" step="0.000001" data-g="lat" value="${site.geo?.lat ?? ''}" placeholder="45.899"></label>
+      <label class="field">Longitude (centre)<input type="number" step="0.000001" data-g="lon" value="${site.geo?.lon ?? ''}" placeholder="6.129"></label>
+      <label class="field">Azimut du large (°)<input type="number" min="0" max="359" step="1" data-g="bearing" value="${site.geo?.bearing ?? 0}"></label>
+      <label class="field">&nbsp;<button class="btn" data-a="locate">Ma position</button></label>
+    </div>
+    <div class="note">Sert au plan d'ancrage (GPS Garmin, téléphone). Azimut : direction de la plage vers le large, 0° = nord, 90° = est.${site.geo ? ` <a class="link" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${site.geo.lat}&mlon=${site.geo.lon}#map=18/${site.geo.lat}/${site.geo.lon}">Vérifier sur la carte</a>` : ''}</div>
   </div>`);
+  const setGeo = (geo: { lat: number; lon: number; bearing: number }) => {
+    store.update((p) => (p.site = { ...p.site, geo }));
+    onChange();
+  };
+  el.querySelectorAll<HTMLInputElement>('[data-g]').forEach((inp) => {
+    inp.onchange = () => {
+      const v = (k: string) => Number(el.querySelector<HTMLInputElement>(`[data-g=${k}]`)!.value);
+      const lat = v('lat'),
+        lon = v('lon');
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return;
+      setGeo({ lat: Math.max(-85, Math.min(85, lat)), lon: Math.max(-180, Math.min(180, lon)), bearing: ((v('bearing') % 360) + 360) % 360 });
+    };
+  });
+  el.querySelector<HTMLElement>('[data-a=locate]')!.onclick = () => {
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => setGeo({ lat: +pos.coords.latitude.toFixed(6), lon: +pos.coords.longitude.toFixed(6), bearing: store.project.site.geo?.bearing ?? 0 }),
+      () => alert('Position indisponible : autorisez la géolocalisation ou saisissez les coordonnées.'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
   el.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-k]').forEach((inp) => {
     inp.onchange = () => {
       const k = inp.dataset.k!;
