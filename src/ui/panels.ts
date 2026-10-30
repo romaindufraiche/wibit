@@ -3,90 +3,201 @@ import type { Audience, Category, ModuleSpec } from '../core/types';
 import type { Store } from '../editor/store';
 import { accessoryRows, eur, num } from '../io/export';
 import { AUDIENCE_LIMITS } from '../rules/validate';
+import { icon } from './icons';
 
 export const thumbs = new Map<string, string>();
 
-const h = (html: string) => {
+export const h = (html: string) => {
   const t = document.createElement('template');
   t.innerHTML = html.trim();
   return t.content.firstElementChild as HTMLElement;
 };
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-const dots = (n: number) => '●'.repeat(n) + '○'.repeat(5 - n);
-const sizeOf = (s: ModuleSpec) => s.displaySize ?? `${num(s.L)} × ${num(s.W)} m`;
+export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+const level = (n: number) => `<span class="level" title="Difficulté ${n}/5">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
+export const sizeOf = (s: ModuleSpec) => s.displaySize ?? `${num(s.L)} × ${num(s.W)} m`;
+const thumbImg = (id: string) => (thumbs.get(id) ? `<img alt="" src="${thumbs.get(id)}">` : '');
 
-// ------------------------------------------------ catalogue
+const SHORT_CAT: Record<Category, string> = {
+  fun: 'Parcours',
+  matchtrack: 'MatchTrack',
+  watch: 'Surveillance',
+  technical: 'Bases & jonctions',
+  standalone: 'Autonomes',
+};
 
-export interface CatalogHandlers {
-  onAdd: (type: string) => void;
+// ------------------------------------------------ catalogue plein format
+
+export interface CatalogApi {
+  open(): void;
+  close(): void;
+  toggle(): void;
+  isOpen(): boolean;
+  redraw(): void;
+  setThumb(id: string): void;
 }
 
-export function renderCatalog(store: Store, handlers: CatalogHandlers) {
-  const root = document.getElementById('catalog')!;
+export function initCatalog(store: Store, onAdd: (type: string) => void, onVisibility: (open: boolean) => void): CatalogApi {
+  const panel = document.getElementById('catalog')!;
+  const grid = document.getElementById('catalog-grid')!;
+  const tabs = document.getElementById('cat-tabs')!;
   const search = document.getElementById('search') as HTMLInputElement;
-  const filters = document.getElementById('filters')!;
+  const fit = document.getElementById('fit-site') as HTMLInputElement;
+  document.querySelector('.search-ico')!.innerHTML = icon('search', 16);
+  const closeBtn = document.getElementById('catalog-close')!;
+  closeBtn.innerHTML = icon('x', 18);
   let cat: Category | 'all' = 'all';
-  let fitSite = false;
 
-  const chips: [Category | 'all', string][] = [['all', 'Tous'], ...(Object.entries(CATEGORY_LABELS).map(([k, v]) => [k, v.split(' —')[0]]) as [Category, string][])];
+  const fits = (s: ModuleSpec) => {
+    const lim = AUDIENCE_LIMITS[store.project.audience];
+    return s.depth <= store.project.site.depth && (s.role === 'watch' || (s.H <= lim.maxH && s.diff <= lim.maxDiff));
+  };
+
   const draw = () => {
-    filters.innerHTML = '';
-    for (const [k, label] of chips) {
-      const b = h(`<button class="chip ${cat === k ? 'on' : ''}">${label}</button>`);
+    const q = search.value.trim().toLowerCase();
+    const list = MODULES.filter((s) => !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q)).filter((s) => !fit.checked || fits(s));
+    tabs.innerHTML = '';
+    const cats: (Category | 'all')[] = ['all', ...(Object.keys(CATEGORY_LABELS) as Category[])];
+    for (const c of cats) {
+      const n = c === 'all' ? list.length : list.filter((s) => s.category === c).length;
+      const b = h(`<button class="cat-tab ${cat === c ? 'on' : ''}">${c === 'all' ? 'Tous' : SHORT_CAT[c]}<small>${n}</small></button>`);
       b.onclick = () => {
-        cat = k;
+        cat = c;
         draw();
       };
-      filters.appendChild(b);
+      tabs.appendChild(b);
     }
-    const fb = h(`<button class="chip ${fitSite ? 'on' : ''}" title="Masquer les modules trop profonds ou hors profil public">Compatibles site</button>`);
-    fb.onclick = () => {
-      fitSite = !fitSite;
-      draw();
-    };
-    filters.appendChild(fb);
-
-    const q = search.value.trim().toLowerCase();
-    const lim = AUDIENCE_LIMITS[store.project.audience];
-    root.innerHTML = '';
-    for (const [c, label] of Object.entries(CATEGORY_LABELS) as [Category, string][]) {
-      if (cat !== 'all' && cat !== c) continue;
-      const list = MODULES.filter((s) => s.category === c)
-        .filter((s) => !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q))
-        .filter((s) => !fitSite || (s.depth <= store.project.site.depth && (s.role === 'watch' || (s.H <= lim.maxH && s.diff <= lim.maxDiff))))
-        .sort((a, b) => a.name.localeCompare(b.name));
-      if (!list.length) continue;
-      root.appendChild(h(`<div class="cat-title">${label} · ${list.length}</div>`));
-      const grid = h(`<div class="grid-cards"></div>`);
-      for (const s of list) {
-        const card = h(`<button class="mod-card" draggable="true" data-id="${s.id}" title="${esc(s.desc)}\nCliquer : ajouter (accroché au module sélectionné)\nGlisser : déposer dans la scène">
-          <div class="thumb">${thumbs.get(s.id) ? `<img alt="" src="${thumbs.get(s.id)}">` : ''}</div>
-          <div class="name">${esc(s.name)}</div>
-          <div class="meta"><span>${sizeOf(s)}</span><span>${num(s.H)} m</span></div>
-          <div class="meta"><span class="dots" title="Difficulté">${dots(s.diff)}</span><span>${eur(s.price)}</span></div>
+    grid.innerHTML = '';
+    const shown = list.filter((s) => cat === 'all' || s.category === cat).sort((a, b) => a.name.localeCompare(b.name));
+    if (!shown.length) grid.appendChild(h(`<div class="empty">Aucun module ne correspond.</div>`));
+    for (const s of shown) {
+      const card = h(`<button class="card ${fits(s) ? '' : 'unfit'}" draggable="true" data-id="${s.id}" title="${esc(s.desc)}">
+          <div class="thumb">${thumbImg(s.id)}</div>
+          <div class="body">
+            <div class="meta"><span class="name">${esc(s.name)}</span>${level(s.diff)}</div>
+            <div class="meta"><span>${sizeOf(s)} · H ${num(s.H)} m</span></div>
+          </div>
         </button>`);
-        card.onclick = () => handlers.onAdd(s.id);
-        card.addEventListener('dragstart', (e) => {
-          e.dataTransfer?.setData('text/wibit-module', s.id);
-          if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
-        });
-        grid.appendChild(card);
-      }
-      root.appendChild(grid);
+      card.onclick = () => onAdd(s.id);
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer?.setData('text/wibit-module', s.id);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+        // le catalogue s'efface pour laisser déposer dans la scène
+        requestAnimationFrame(() => panel.classList.add('dragging'));
+      });
+      card.addEventListener('dragend', () => {
+        panel.classList.remove('dragging');
+        api.close();
+      });
+      grid.appendChild(card);
     }
   };
-  search.oninput = draw;
-  draw();
-  return {
-    redraw: draw,
-    setThumb(id: string, url: string) {
-      const img = root.querySelector<HTMLElement>(`.mod-card[data-id="${id}"] .thumb`);
-      if (img) img.innerHTML = `<img alt="" src="${url}">`;
+
+  const api: CatalogApi = {
+    open() {
+      panel.hidden = false;
+      draw();
+      onVisibility(true);
     },
+    close() {
+      panel.hidden = true;
+      onVisibility(false);
+    },
+    toggle() {
+      if (panel.hidden) api.open();
+      else api.close();
+    },
+    isOpen: () => !panel.hidden,
+    redraw: () => !panel.hidden && draw(),
+    setThumb(id) {
+      const t = grid.querySelector<HTMLElement>(`.card[data-id="${id}"] .thumb`);
+      if (t) t.innerHTML = thumbImg(id);
+    },
+  };
+  search.oninput = draw;
+  fit.onchange = draw;
+  closeBtn.onclick = api.close;
+  return api;
+}
+
+// ------------------------------------------------ barre rapide
+
+export function renderHotbar(recent: string[], catalogOpen: boolean, onAdd: (t: string) => void, onCatalog: () => void) {
+  const bar = document.getElementById('hotbar')!;
+  bar.innerHTML = '';
+  const cat = h(`<button class="slot-catalog ${catalogOpen ? 'on' : ''}" title="Catalogue (C)">${icon(catalogOpen ? 'x' : 'grid', 20)}<span>${catalogOpen ? 'Fermer' : 'Catalogue'}</span></button>`);
+  cat.onclick = onCatalog;
+  bar.appendChild(cat);
+  if (catalogOpen) return;
+  bar.appendChild(h(`<span class="vsep"></span>`));
+  if (!recent.length) {
+    bar.appendChild(h(`<span class="hint">Les modules que vous utilisez apparaîtront ici.</span>`));
+    return;
+  }
+  recent.slice(0, 9).forEach((id, i) => {
+    const s = spec(id);
+    const b = h(`<button class="slot" title="${esc(s.name)} — touche ${i + 1}"><span class="num">${i + 1}</span>${thumbImg(id)}</button>`);
+    b.onclick = () => onAdd(id);
+    b.draggable = true;
+    b.addEventListener('dragstart', (e) => e.dataTransfer?.setData('text/wibit-module', id));
+    bar.appendChild(b);
+  });
+}
+
+// ------------------------------------------------ tableau de bord (devis + règles)
+
+let rulesOpen = false;
+let detailsOpen = false;
+
+export function renderHud(store: Store, onPick: (uids: string[]) => void) {
+  const el = document.getElementById('hud')!;
+  const st = store.derived.stats;
+  const issues = store.derived.issues;
+  const errors = issues.filter((i) => i.level === 'error').length;
+  const warnings = issues.filter((i) => i.level === 'warning').length;
+  const lvl = !st.modules ? 'info' : errors ? 'error' : warnings ? 'warning' : 'ok';
+  const label = !st.modules ? 'Aucun module' : errors ? `${errors} erreur${errors > 1 ? 's' : ''}${warnings ? ` · ${warnings} alerte${warnings > 1 ? 's' : ''}` : ''}` : warnings ? `${warnings} alerte${warnings > 1 ? 's' : ''}` : 'Parc conforme';
+  el.innerHTML = `
+    <div class="hud-total"><b>${eur(st.total)}</b><span>HT estimé</span></div>
+    <div class="stats">
+      <div class="stat"><b>${st.capacity}</b><span>personnes</span></div>
+      <div class="stat"><b>${st.modules}</b><span>modules</span></div>
+      <div class="stat"><b>${num(st.footprint.w, 0)}×${num(st.footprint.d, 0)}</b><span>mètres</span></div>
+    </div>
+    <button class="status ${rulesOpen ? 'open' : ''}" data-a="rules"><span class="dot ${lvl}"></span><span class="grow">${label}</span>${issues.length ? icon('chevron', 16) : ''}</button>`;
+  if (rulesOpen && issues.length) {
+    const order = { error: 0, warning: 1, info: 2 };
+    const list = h(`<div class="issue-list"></div>`);
+    for (const i of [...issues].sort((a, b) => order[a.level] - order[b.level])) {
+      const b = h(`<button class="issue"><span class="dot ${i.level}"></span><span>${esc(i.message)}</span></button>`);
+      b.onclick = () => i.uids.length && onPick(i.uids);
+      list.appendChild(b);
+    }
+    el.appendChild(list);
+  }
+  const det = h(`<button class="link">${detailsOpen ? 'Masquer le détail' : 'Détail du devis'}</button>`);
+  det.onclick = () => {
+    detailsOpen = !detailsOpen;
+    renderHud(store, onPick);
+  };
+  el.appendChild(det);
+  if (detailsOpen) {
+    const acc = accessoryRows(st);
+    el.appendChild(
+      h(`<div class="details">
+        <div class="row"><span>Modules</span><span>${eur(st.price)}</span></div>
+        ${acc.map((r) => `<div class="row"><span>${r.qty} × ${esc(r.name)}</span><span>${eur(r.qty * r.unit)}</span></div>`).join('')}
+        <div class="row"><span>Boucles · accès · surveillance</span><span>${st.loops} · ${st.accesses} · ${st.watchPosts}</span></div>
+        <div class="note">Prix, capacités et ancrages : estimations de démonstration.</div>
+      </div>`),
+    );
+  }
+  el.querySelector<HTMLElement>('[data-a=rules]')!.onclick = () => {
+    rulesOpen = !rulesOpen;
+    renderHud(store, onPick);
   };
 }
 
-// ------------------------------------------------ inspecteur
+// ------------------------------------------------ inspecteur (sélection)
 
 export interface InspectorHandlers {
   rotate: (deg: number) => void;
@@ -98,59 +209,57 @@ export interface InspectorHandlers {
 export function renderInspector(store: Store, hd: InspectorHandlers) {
   const el = document.getElementById('inspector')!;
   const sel = store.selected();
-  if (!sel.length) {
-    el.innerHTML = `<h3>Sélection</h3><div class="empty">Cliquez sur un module dans la scène, ou sur une carte du catalogue pour l'ajouter.
-      Un module ajouté pendant qu'un autre est sélectionné s'y accroche automatiquement.</div>`;
-    return;
-  }
+  el.hidden = sel.length === 0;
+  if (!sel.length) return;
   if (sel.length > 1) {
     const price = sel.reduce((a, m) => a + spec(m.type).price, 0);
-    el.innerHTML = `<h3>Sélection <span>${sel.length} modules</span></h3><div class="kv"><span>Prix cumulé</span><span>${eur(price)}</span></div>`;
+    el.innerHTML = `<div class="insp-head"><div><b>${sel.length} modules</b><div class="desc">${eur(price)} HT</div></div></div>`;
   } else {
     const m = sel[0];
     const s = spec(m.type);
     const used = store.derived.graph.usedPorts.get(m.uid)?.size ?? 0;
     const issues = store.derived.issues.filter((i) => i.uids.includes(m.uid) && i.level !== 'info');
-    el.innerHTML = `<h3>Module sélectionné</h3>
-      <div class="insp-head">${thumbs.get(s.id) ? `<img alt="" src="${thumbs.get(s.id)}">` : ''}<div><b>${esc(s.name)}</b><div class="desc">${esc(s.desc)}</div></div></div>
-      <div class="kv">
-        <span>Dimensions</span><span>${sizeOf(s)} · H ${num(s.H)} m</span>
-        <span>Profondeur min.</span><span>${num(s.depth, 2)} m</span>
-        <span>Difficulté</span><span class="dots">${dots(s.diff)}</span>
-        <span>Capacité (estim.)</span><span>${s.role === 'watch' ? 'poste de surveillance' : s.cap + ' pers.'}</span>
-        <span>Connexions</span><span>${used} / ${s.ports.length}</span>
-        <span>Ancrages (estim.)</span><span>${s.anchors}</span>
-        <span>Prix indicatif HT</span><span>${eur(s.price)}</span>
-        <span>Position</span><span>${num(m.x)} ; ${num(m.z)} m · ${Math.round((((m.rot * 180) / Math.PI) % 360 + 360) % 360)}°</span>
+    el.innerHTML = `
+      <div class="insp-head">${thumbImg(s.id)}<div><b>${esc(s.name)}</b><div class="desc">${esc(s.desc)}</div></div></div>
+      <div class="chips">
+        <span class="chip"><b>${sizeOf(s)}</b></span><span class="chip">H <b>${num(s.H)} m</b></span>
+        <span class="chip">Prof. <b>${num(s.depth, 2)} m</b></span>
+        <span class="chip"><b>${s.role === 'watch' ? 'Surveillance' : s.cap + ' pers.'}</b></span>
+        <span class="chip">Connexions <b>${used}/${s.ports.length}</b></span>
+        <span class="chip"><b>${eur(s.price)}</b></span>
       </div>
-      ${issues.length ? `<div class="issues-list" style="margin-top:8px">${issues.map((i) => `<div class="issue"><span class="lvl ${i.level}"></span><span>${esc(i.message)}</span></div>`).join('')}</div>` : ''}`;
+      ${issues.length ? `<div class="issue-list">${issues.map((i) => `<div class="issue"><span class="dot ${i.level}"></span><span>${esc(i.message)}</span></div>`).join('')}</div>` : ''}`;
   }
-  const row = h(`<div class="btn-row">
-      <button class="btn" data-a="l">⟲ 90°</button><button class="btn" data-a="r">⟳ 90°</button>
-      <button class="btn" data-a="dup">Dupliquer</button><button class="btn" data-a="focus">Centrer</button>
-      <button class="btn danger" data-a="del">Supprimer</button></div>`);
-  row.querySelector<HTMLElement>('[data-a="l"]')!.onclick = () => hd.rotate(90);
-  row.querySelector<HTMLElement>('[data-a="r"]')!.onclick = () => hd.rotate(-90);
-  row.querySelector<HTMLElement>('[data-a="dup"]')!.onclick = hd.duplicate;
-  row.querySelector<HTMLElement>('[data-a="del"]')!.onclick = hd.remove;
-  row.querySelector<HTMLElement>('[data-a="focus"]')!.onclick = hd.focus;
-  el.appendChild(row);
+  const actions = h(`<div class="insp-actions">
+      <button class="icon-btn" data-a="l" title="Pivoter à gauche (R)">${icon('rotl', 18)}</button>
+      <button class="icon-btn" data-a="r" title="Pivoter à droite">${icon('rotr', 18)}</button>
+      <button class="icon-btn" data-a="dup" title="Dupliquer (Ctrl+D)">${icon('copy', 18)}</button>
+      <button class="icon-btn" data-a="focus" title="Centrer la vue (F)">${icon('focus', 18)}</button>
+      <span class="spacer"></span>
+      <button class="icon-btn danger" data-a="del" title="Supprimer (Suppr)">${icon('trash', 18)}</button>
+    </div>`);
+  actions.querySelector<HTMLElement>('[data-a=l]')!.onclick = () => hd.rotate(90);
+  actions.querySelector<HTMLElement>('[data-a=r]')!.onclick = () => hd.rotate(-90);
+  actions.querySelector<HTMLElement>('[data-a=dup]')!.onclick = hd.duplicate;
+  actions.querySelector<HTMLElement>('[data-a=focus]')!.onclick = hd.focus;
+  actions.querySelector<HTMLElement>('[data-a=del]')!.onclick = hd.remove;
+  el.appendChild(actions);
 }
 
-// ------------------------------------------------ site / projet
+// ------------------------------------------------ plan d'eau & public (panneau latéral)
 
-export function renderSite(store: Store, onChange: () => void) {
-  const el = document.getElementById('site')!;
-  if (el.contains(document.activeElement)) return; // ne pas casser la saisie en cours
+export function siteFlyout(store: Store, onChange: () => void): HTMLElement {
   const { site, audience } = store.project;
-  el.innerHTML = `<h3>Plan d'eau & public</h3>
-    <div class="form">
-      <label>Longueur (rivage) m<input type="number" min="15" max="400" step="1" data-k="length" value="${site.length}"></label>
-      <label>Largeur (vers le large) m<input type="number" min="15" max="400" step="1" data-k="width" value="${site.width}"></label>
-      <label>Profondeur m<input type="number" min="0.8" max="15" step="0.1" data-k="depth" value="${site.depth}"></label>
-      <label>Public<select data-k="audience">${(Object.keys(AUDIENCE_LIMITS) as Audience[]).map((a) => `<option value="${a}" ${a === audience ? 'selected' : ''}>${AUDIENCE_LIMITS[a].label}</option>`).join('')}</select></label>
+  const el = h(`<div>
+    <h3>Plan d'eau</h3>
+    <div class="fields">
+      <label class="field">Longueur (rivage)<input type="number" min="15" max="400" step="1" data-k="length" value="${site.length}"></label>
+      <label class="field">Largeur<input type="number" min="15" max="400" step="1" data-k="width" value="${site.width}"></label>
+      <label class="field">Profondeur<input type="number" min="0.8" max="15" step="0.1" data-k="depth" value="${site.depth}"></label>
+      <label class="field">Public<select data-k="audience">${(Object.keys(AUDIENCE_LIMITS) as Audience[]).map((a) => `<option value="${a}" ${a === audience ? 'selected' : ''}>${AUDIENCE_LIMITS[a].label}</option>`).join('')}</select></label>
     </div>
-    <div class="note">Le rivage est en bas de la scène (plage). Ligne orange : distance de sécurité de 3 m aux bords.</div>`;
+    <div class="note">Dimensions en mètres. La plage est en bas de la scène ; la ligne orange marque la distance de sécurité de 3 m aux bords.</div>
+  </div>`);
   el.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-k]').forEach((inp) => {
     inp.onchange = () => {
       const k = inp.dataset.k!;
@@ -158,61 +267,11 @@ export function renderSite(store: Store, onChange: () => void) {
         if (k === 'audience') p.audience = inp.value as Audience;
         else {
           const i = inp as HTMLInputElement;
-          const v = Math.max(Number(i.min), Math.min(Number(i.max), Number(i.value) || 0));
-          (p.site as any)[k] = v;
+          (p.site as any)[k] = Math.max(Number(i.min), Math.min(Number(i.max), Number(i.value) || 0));
         }
       });
-      inp.blur();
       onChange();
     };
   });
-}
-
-// ------------------------------------------------ résumé & devis
-
-export function renderSummary(store: Store) {
-  const el = document.getElementById('summary')!;
-  const st = store.derived.stats;
-  const acc = accessoryRows(st);
-  el.innerHTML = `<h3>Résumé & devis</h3>
-    <div class="kv">
-      <span>Modules</span><span>${st.modules}</span>
-      <span>Capacité estimée</span><span>${st.capacity} pers.</span>
-      <span>Emprise</span><span>${num(st.footprint.w, 0)} × ${num(st.footprint.d, 0)} m</span>
-      <span>Surface gonflable</span><span>${num(st.area, 0)} m²</span>
-      <span>Boucles InfinityLoop</span><span>${st.loops}</span>
-      <span>Accès / postes de surveillance</span><span>${st.accesses} / ${st.watchPosts}</span>
-      <span>Modules (HT)</span><span>${eur(st.price)}</span>
-    </div>
-    <div class="note" style="margin-top:10px;font-weight:600;color:var(--ink)">Produits à prévoir</div>
-    <div class="kv">${acc.map((r) => `<span>${r.qty} × ${r.name}</span><span>${eur(r.qty * r.unit)}</span>`).join('')}</div>
-    <div class="total"><span>Total HT estimé</span><b>${eur(st.total)}</b></div>
-    <div class="note">Prix, capacités et ancrages : estimations de démonstration, à remplacer par la grille Wibit.</div>`;
-}
-
-// ------------------------------------------------ contrôle des règles
-
-export function renderIssues(store: Store, onPick: (uids: string[]) => void) {
-  const el = document.getElementById('issues')!;
-  const issues = store.derived.issues;
-  const n = (l: string) => issues.filter((i) => i.level === l).length;
-  const errors = n('error'),
-    warnings = n('warning');
-  el.innerHTML = `<h3>Contrôle des règles <span class="badges">${errors ? `<span class="badge error">${errors}</span>` : ''}${warnings ? `<span class="badge warning">${warnings}</span>` : ''}${!errors && !warnings ? '<span class="badge ok">OK</span>' : ''}</span></h3>`;
-  if (!store.project.modules.length) {
-    el.appendChild(h(`<div class="empty">Aucun module. Ajoutez-en depuis le catalogue ou cliquez sur « 🎲 Parc aléatoire ».</div>`));
-    return;
-  }
-  if (!issues.length) {
-    el.appendChild(h(`<div class="empty">Toutes les règles de conception sont respectées.</div>`));
-    return;
-  }
-  const order = { error: 0, warning: 1, info: 2 };
-  const list = h(`<div class="issues-list"></div>`);
-  for (const i of [...issues].sort((a, b) => order[a.level] - order[b.level])) {
-    const b = h(`<button class="issue"><span class="lvl ${i.level}"></span><span><span class="rule">${i.rule}</span> ${esc(i.message)}</span></button>`);
-    b.onclick = () => i.uids.length && onPick(i.uids);
-    list.appendChild(b);
-  }
-  el.appendChild(list);
+  return el;
 }

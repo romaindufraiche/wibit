@@ -1,33 +1,56 @@
+import { APP_NAME, APP_TAGLINE } from './brand';
 import { MODULES, spec } from './catalog/modules';
 import { attachTo, findSnap, freeSpot } from './core/snap';
 import type { Placed, Project } from './core/types';
 import { Store, emptyProject } from './editor/store';
-import { DEFAULT_PARAMS, generatePark, type GenParams } from './generator/generator';
 import { followStroke } from './generator/freehand';
+import { DEFAULT_PARAMS, generatePark, type GenParams } from './generator/generator';
 import { randomSeed } from './generator/rng';
 import { TEMPLATES } from './generator/templates';
 import { autosave, downloadCSV, downloadJSON, downloadPNG, loadAutosave, parseProject, printReport, projectFromHash, shareLink } from './io/export';
 import { AUDIENCE_LIMITS } from './rules/validate';
 import { renderThumbnails } from './scene/thumbnails';
 import { Viewport } from './scene/viewport';
-import { renderCatalog, renderInspector, renderIssues, renderSite, renderSummary, thumbs } from './ui/panels';
+import { icon } from './ui/icons';
+import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
 
 const store = new Store();
 const viewport = new Viewport(document.getElementById('viewport')!, store);
 // accès console pour démonstration / tests automatisés
-(window as any).__wibit = { store, viewport };
+(window as any).__app = { store, viewport };
 let genParams: GenParams = { ...DEFAULT_PARAMS, seed: randomSeed() };
 
-// ------------------------------------------------ utilitaires UI
-
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+document.title = APP_NAME;
+$('#brand-name').textContent = APP_NAME;
+
+// ------------------------------------------------ notifications
+
 let toastTimer = 0;
-function toast(msg: string, ms = 3200) {
+function toast(msg: string, ms = 3400) {
   const t = $('#toast');
   t.textContent = msg;
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => (t.hidden = true), ms);
+}
+
+// ------------------------------------------------ modules récents (barre rapide)
+
+const RECENT_KEY = 'parkcraft:recent';
+let recent: string[] = [];
+try {
+  recent = (JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as string[]).filter((id) => MODULES.some((m) => m.id === id));
+} catch {
+  recent = [];
+}
+function pushRecent(type: string) {
+  recent = [type, ...recent.filter((t) => t !== type)].slice(0, 9);
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+  } catch {
+    /* stockage indisponible */
+  }
 }
 
 // ------------------------------------------------ opérations d'édition
@@ -46,6 +69,8 @@ function addModule(type: string, at?: { x: number; z: number }) {
   }
   const uid = store.newUid();
   const placed: Placed = { uid, type, ...tf };
+  pushRecent(type);
+  if (catalog.isOpen()) catalog.close();
   store.update((p) => p.modules.push(placed));
   store.select([uid]);
 }
@@ -88,40 +113,31 @@ function deleteSelection() {
 function nudge(dx: number, dz: number) {
   if (!store.selection.size) return;
   store.update((p) => {
-    for (const m of p.modules) if (store.selection.has(m.uid)) {
-      m.x += dx;
-      m.z += dz;
-    }
+    for (const m of p.modules)
+      if (store.selection.has(m.uid)) {
+        m.x += dx;
+        m.z += dz;
+      }
   });
 }
 
 // ------------------------------------------------ génération
 
-function runGenerator(params: GenParams, opts: { keepSite?: boolean; site?: Project['site']; name?: string } = {}) {
+function runGenerator(params: GenParams, opts: { site?: Project['site']; name?: string } = {}) {
   const site = opts.site ?? store.project.site;
-  const t0 = performance.now();
   const res = generatePark(site, params);
-  const dt = Math.round(performance.now() - t0);
   if (!res.modules.length) {
-    toast(res.log[0] ?? 'Génération impossible.');
+    toast(res.log[0] ?? 'Génération impossible sur ce plan d’eau.');
     return;
   }
-  const project: Project = {
-    ...store.project,
-    name: opts.name ?? `Parc ${params.seed}`,
-    site,
-    audience: params.audience,
-    modules: res.modules,
-  };
-  store.setProject(project);
+  store.setProject({ ...store.project, name: opts.name ?? `Parc ${params.seed}`, site, audience: params.audience, modules: res.modules });
   viewport.frameAll();
   const st = store.derived.stats;
-  const errs = store.derived.issues.filter((i) => i.level === 'error').length;
-  toast(`🎲 « ${params.seed} » : ${st.modules} modules, ${st.capacity} pers., ${st.loops ? 'boucle InfinityLoop, ' : ''}${errs ? errs + ' erreur(s)' : 'règles OK'} — ${dt} ms`);
+  toast(`${st.modules} modules · ${st.capacity} personnes${st.loops ? ' · boucle' : ''} — variante « ${params.seed} »`);
 }
 
 function randomPark() {
-  genParams = { ...genParams, seed: randomSeed() };
+  genParams = { ...genParams, audience: store.project.audience, seed: randomSeed() };
   runGenerator(genParams);
 }
 
@@ -130,22 +146,18 @@ function openGeneratorDialog() {
   const p = { ...genParams, audience: store.project.audience };
   const seg = (k: string, opts: [string, string][], cur: string) =>
     `<div class="seg" data-seg="${k}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const check = (k: keyof GenParams, label: string) => `<label class="check-pill"><input type="checkbox" data-k="${k}" ${p[k] ? 'checked' : ''}> ${label}</label>`;
   dlg.innerHTML = `
-    <div class="dlg-head"><h2>🎲 Générateur de parc</h2><p>Crée un parc cohérent : accès sur le rivage, enchaînements d'obstacles avec plateformes de repos,
-      jonctions, boucle InfinityLoop, toboggans en fin de parcours avec zone d'eau libre, surveillance et balisage.</p></div>
-    <div class="dlg-body"><div class="form">
-      <label class="full">Public${seg('audience', (Object.keys(AUDIENCE_LIMITS) as GenParams['audience'][]).map((a) => [a, AUDIENCE_LIMITS[a].label.split(' (')[0]]), p.audience)}</label>
-      <label class="full">Capacité visée<div class="range-row"><input type="range" min="15" max="250" step="5" data-k="capacity" value="${p.capacity}"><output>${p.capacity}</output></div></label>
-      <label class="full">Intensité<div class="range-row"><input type="range" min="1" max="5" step="1" data-k="intensity" value="${p.intensity}"><output>${p.intensity}</output></div></label>
-      <label class="check"><input type="checkbox" data-k="loop" ${p.loop ? 'checked' : ''}> Boucle InfinityLoop</label>
-      <label class="check"><input type="checkbox" data-k="bigSlide" ${p.bigSlide ? 'checked' : ''}> Grand toboggan</label>
-      <label class="check"><input type="checkbox" data-k="standalones" ${p.standalones ? 'checked' : ''}> Modules autonomes</label>
-      <span></span>
-      <label>Graine (même graine = même parc)<input data-k="seed" value="${p.seed}"></label>
-      <label>&nbsp;<button type="button" class="btn" data-a="reseed">Nouvelle graine</button></label>
+    <div class="dlg-head"><h2>Générer un parc</h2><p>Un parc complet et cohérent : accès, parcours rythmé, jonctions, boucle, toboggans en fin de parcours, surveillance et balisage.</p></div>
+    <div class="dlg-body"><div class="fields">
+      <label class="field full">Public${seg('audience', (Object.keys(AUDIENCE_LIMITS) as GenParams['audience'][]).map((a) => [a, AUDIENCE_LIMITS[a].label.split(' (')[0]]), p.audience)}</label>
+      <label class="field full">Capacité visée<div class="range-row"><input type="range" min="15" max="250" step="5" data-k="capacity" value="${p.capacity}"><output>${p.capacity}</output></div></label>
+      <label class="field full">Intensité<div class="range-row"><input type="range" min="1" max="5" step="1" data-k="intensity" value="${p.intensity}"><output>${p.intensity}</output></div></label>
+      <div class="field full">Options<div class="checks">${check('loop', 'Boucle InfinityLoop')}${check('bigSlide', 'Grand toboggan')}${check('standalones', 'Modules autonomes')}</div></div>
+      <label class="field full">Variante<input data-k="seed" value="${esc(p.seed)}"></label>
     </div>
-    <div class="note">Plan d'eau utilisé : ${store.project.site.length} × ${store.project.site.width} m, profondeur ${store.project.site.depth} m (modifiable dans le panneau de droite).</div></div>
-    <div class="dlg-foot"><button class="btn" data-a="cancel">Annuler</button><button class="btn yellow" data-a="go">Générer le parc</button></div>`;
+    <div class="note">Plan d'eau : ${store.project.site.length} × ${store.project.site.width} m, profondeur ${store.project.site.depth} m. Une même variante redonne toujours le même parc.</div></div>
+    <div class="dlg-foot"><button class="btn" data-a="cancel">Annuler</button><button class="btn" data-a="reseed">Autre variante</button><button class="btn primary" data-a="go">Générer</button></div>`;
   dlg.querySelectorAll<HTMLElement>('[data-seg]').forEach((g) =>
     g.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
       b.onclick = () => {
@@ -163,7 +175,7 @@ function openGeneratorDialog() {
   });
   dlg.querySelectorAll<HTMLInputElement>('input[type=checkbox]').forEach((c) => (c.onchange = () => ((p as any)[c.dataset.k!] = c.checked)));
   const seedIn = dlg.querySelector<HTMLInputElement>('[data-k=seed]')!;
-  seedIn.oninput = () => (p.seed = seedIn.value || 'wibit');
+  seedIn.oninput = () => (p.seed = seedIn.value || 'parc');
   dlg.querySelector<HTMLElement>('[data-a=reseed]')!.onclick = () => {
     p.seed = randomSeed();
     seedIn.value = p.seed;
@@ -172,6 +184,7 @@ function openGeneratorDialog() {
   dlg.querySelector<HTMLElement>('[data-a=go]')!.onclick = () => {
     genParams = { ...p };
     dlg.close();
+    store.update((pr) => (pr.audience = p.audience), false);
     runGenerator(genParams);
   };
   dlg.showModal();
@@ -181,137 +194,213 @@ function openStartDialog() {
   const dlg = $<HTMLDialogElement>('#start-dialog');
   const site = { ...store.project.site };
   dlg.innerHTML = `
-    <div class="dlg-head"><h2>Bienvenue dans Wibit Create</h2><p>Concevez votre parc aquatique gonflable en 3D, obtenez un devis estimatif et vérifiez les règles de sécurité en temps réel.</p></div>
+    <div class="dlg-head"><h2>Nouveau parc</h2><p>${APP_TAGLINE}. Indiquez votre plan d'eau, puis choisissez comment commencer.</p></div>
     <div class="dlg-body">
-      <div class="form">
-        <label>Longueur du plan d'eau (m)<input type="number" data-k="length" value="${site.length}" min="15" max="400"></label>
-        <label>Largeur (m)<input type="number" data-k="width" value="${site.width}" min="15" max="400"></label>
-        <label>Profondeur (m)<input type="number" data-k="depth" value="${site.depth}" min="0.8" max="15" step="0.1"></label>
+      <div class="fields" style="grid-template-columns:1fr 1fr 1fr">
+        <label class="field">Longueur (m)<input type="number" data-k="length" value="${site.length}" min="15" max="400"></label>
+        <label class="field">Largeur (m)<input type="number" data-k="width" value="${site.width}" min="15" max="400"></label>
+        <label class="field">Profondeur (m)<input type="number" data-k="depth" value="${site.depth}" min="0.8" max="15" step="0.1"></label>
       </div>
-      <div class="start-choices">
-        <button data-a="random"><b>🎲 Parc aléatoire</b><span>Un parc cohérent généré instantanément sur ce plan d'eau.</span></button>
-        <button data-a="blank"><b>Page blanche</b><span>Partir de zéro et placer les modules du catalogue.</span></button>
-        <button data-a="templates"><b>Modèles de parcs</b><span>Kids Lagoon, Family Beach, SportsPark XL…</span></button>
-        <button data-a="settings"><b>⚙ Générateur avancé</b><span>Public, capacité, intensité, boucle, toboggan.</span></button>
+      <div class="start-grid">
+        <button data-a="random">${icon('shuffle', 22)}<b>Générer un parc</b><span>Un parc complet et cohérent, prêt à ajuster.</span></button>
+        <button data-a="pen">${icon('pen', 22)}<b>Dessiner le parcours</b><span>Tracez une ligne, les modules s'y posent.</span></button>
+        <button data-a="catalog">${icon('grid', 22)}<b>Partir du catalogue</b><span>Placez les modules un par un.</span></button>
+        <button data-a="templates">${icon('layout', 22)}<b>Modèles de parcs</b><span>Kids Lagoon, Family Beach, SportsPark…</span></button>
       </div>
     </div>`;
-  const readSite = () => {
+  const go = (fn: () => void) => () => {
     dlg.querySelectorAll<HTMLInputElement>('[data-k]').forEach((i) => ((site as any)[i.dataset.k!] = Math.max(Number(i.min), Math.min(Number(i.max), Number(i.value) || 0))));
     store.update((p) => (p.site = { ...site }), false);
-  };
-  dlg.querySelector<HTMLElement>('[data-a=random]')!.onclick = () => {
-    readSite();
-    dlg.close();
-    randomPark();
-  };
-  dlg.querySelector<HTMLElement>('[data-a=blank]')!.onclick = () => {
-    readSite();
     dlg.close();
     viewport.frameAll();
+    fn();
   };
-  dlg.querySelector<HTMLElement>('[data-a=templates]')!.onclick = () => {
-    readSite();
-    dlg.close();
-    switchTab('templates');
-  };
-  dlg.querySelector<HTMLElement>('[data-a=settings]')!.onclick = () => {
-    readSite();
-    dlg.close();
-    openGeneratorDialog();
-  };
+  dlg.querySelector<HTMLElement>('[data-a=random]')!.onclick = go(randomPark);
+  dlg.querySelector<HTMLElement>('[data-a=pen]')!.onclick = go(() => {
+    viewport.frameAll(true);
+    setTool('pen');
+  });
+  dlg.querySelector<HTMLElement>('[data-a=catalog]')!.onclick = go(() => catalog.open());
+  dlg.querySelector<HTMLElement>('[data-a=templates]')!.onclick = go(() => openFlyout('templates'));
   dlg.showModal();
 }
 
-// ------------------------------------------------ panneaux
+// ------------------------------------------------ catalogue & barre rapide
 
-const catalog = renderCatalog(store, { onAdd: (t) => addModule(t) });
+const catalog = initCatalog(store, (t) => addModule(t), () => {
+  refreshHotbar();
+  refreshRail();
+});
+function refreshHotbar() {
+  renderHotbar(recent, catalog.isOpen(), (t) => addModule(t), () => {
+    closeFlyout();
+    catalog.toggle();
+  });
+}
 renderThumbnails(MODULES, (id, url) => {
   thumbs.set(id, url);
-  catalog.setThumb(id, url);
+  catalog.setThumb(id);
+  if (recent.includes(id)) refreshHotbar();
 });
 
-function switchTab(tab: string) {
-  document.querySelectorAll<HTMLElement>('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
-  $('#tab-catalog').hidden = tab !== 'catalog';
-  $('#tab-templates').hidden = tab !== 'templates';
-}
-document.querySelectorAll<HTMLElement>('.tab').forEach((t) => (t.onclick = () => switchTab(t.dataset.tab!)));
+// ------------------------------------------------ outils & panneaux latéraux
 
-const tplRoot = $('#templates');
-for (const t of TEMPLATES) {
-  const b = document.createElement('button');
-  b.className = 'tpl';
-  b.innerHTML = `<b>${t.name}</b><span>${t.desc}<br>${t.site.length} × ${t.site.width} m · prof. ${t.site.depth} m</span>`;
-  b.onclick = () => {
-    genParams = { ...t.params };
-    runGenerator(t.params, { site: t.site, name: t.name });
-  };
-  tplRoot.appendChild(b);
+type Tool = 'select' | 'pen';
+let tool: Tool = 'select';
+let flyout: string | null = null;
+
+function setTool(t: Tool) {
+  tool = t;
+  viewport.setPenMode(t === 'pen');
+  if (t === 'pen') {
+    catalog.close();
+    toast('Stylo : tracez le parcours sur l’eau, relâchez pour poser les modules. Échap pour quitter.', 4500);
+  }
+  refreshRail();
 }
 
-const viewButtons: [keyof Viewport['opts'], string][] = [
+const LAYERS: [keyof Viewport['opts'], string][] = [
   ['grid', 'Grille'],
-  ['ports', 'Connexions'],
-  ['zones', 'Zones de glisse'],
+  ['ports', 'Points de connexion'],
+  ['zones', 'Zones de glisse et de saut'],
   ['anchors', 'Ancrages'],
   ['buoys', 'Balisage'],
 ];
-const vt = $('#view-toolbar');
-for (const [k, label] of viewButtons) {
-  const b = document.createElement('button');
-  b.textContent = label;
-  b.classList.toggle('on', viewport.opts[k]);
-  b.onclick = () => {
-    viewport.opts[k] = !viewport.opts[k];
-    b.classList.toggle('on', viewport.opts[k]);
-    viewport.refreshOverlays();
-  };
-  vt.appendChild(b);
+
+function openFlyout(name: string) {
+  const el = $('#flyout');
+  if (flyout === name) return closeFlyout();
+  catalog.close();
+  flyout = name;
+  el.innerHTML = '';
+  if (name === 'site') el.appendChild(siteFlyout(store, () => catalog.redraw()));
+  if (name === 'templates') {
+    el.appendChild(h(`<h3>Modèles de parcs</h3>`));
+    const list = h(`<div class="tpl-list"></div>`);
+    for (const t of TEMPLATES) {
+      const b = h(`<button class="tpl"><b>${t.name}</b><span>${t.desc}<br>${t.site.length} × ${t.site.width} m · profondeur ${t.site.depth} m</span></button>`);
+      b.onclick = () => {
+        genParams = { ...t.params };
+        runGenerator(t.params, { site: t.site, name: t.name });
+        closeFlyout();
+      };
+      list.appendChild(b);
+    }
+    el.appendChild(list);
+  }
+  if (name === 'layers') {
+    el.appendChild(h(`<h3>Affichage</h3>`));
+    for (const [k, label] of LAYERS) {
+      const row = h(`<button class="switch-row"><span>${label}</span><span class="switch ${viewport.opts[k] ? 'on' : ''}"></span></button>`);
+      row.onclick = () => {
+        viewport.opts[k] = !viewport.opts[k];
+        row.querySelector('.switch')!.classList.toggle('on', viewport.opts[k]);
+        viewport.refreshOverlays();
+      };
+      el.appendChild(row);
+    }
+  }
+  if (name === 'help') {
+    el.appendChild(
+      h(`<div><h3>Commandes</h3><div class="keys">
+        <kbd>Clic</kbd><span>Sélectionner, glisser pour déplacer</span>
+        <kbd>Glisser le vide</kbd><span>Tourner la caméra</span>
+        <kbd>Clic droit</kbd><span>Déplacer la vue</span>
+        <kbd>Molette</kbd><span>Zoom</span>
+        <kbd>C</kbd><span>Catalogue</span>
+        <kbd>1 – 9</kbd><span>Poser un module récent</span>
+        <kbd>P</kbd><span>Stylo (tracé à main levée)</span>
+        <kbd>G</kbd><span>Générer un parc</span>
+        <kbd>R / Maj+R</kbd><span>Pivoter de 90° / 15°</span>
+        <kbd>Ctrl+D</kbd><span>Dupliquer</span>
+        <kbd>Suppr</kbd><span>Supprimer</span>
+        <kbd>Alt</kbd><span>Déplacer sans aimantation</span>
+        <kbd>Ctrl+Z / Ctrl+Y</kbd><span>Annuler / rétablir</span>
+      </div></div>`),
+    );
+  }
+  el.hidden = false;
+  refreshRail();
 }
-vt.appendChild(Object.assign(document.createElement('span'), { className: 'vsep' }));
-// stylo main levée
-const penBtn = document.createElement('button');
-penBtn.className = 'pen';
-penBtn.textContent = '✏️ Stylo';
-penBtn.title = 'Tracer un parcours à main levée : les modules se posent sur le tracé (P)';
-penBtn.onclick = () => setPen(!viewport.penMode);
-vt.prepend(Object.assign(document.createElement('span'), { className: 'vsep' }));
-vt.prepend(penBtn);
-const hintDefault = $('#hint').innerHTML;
-function setPen(on: boolean) {
-  viewport.setPenMode(on);
-  penBtn.classList.toggle('on', on);
-  $('#hint').innerHTML = on
-    ? '<b>Stylo actif</b> · tracez le parcours au clic gauche, relâchez pour poser les modules · commencez près d’une connexion verte pour prolonger un parc · <b>Clic droit</b> panoramique · <b>Échap</b> ou <b>P</b> pour quitter'
-    : hintDefault;
+function closeFlyout() {
+  flyout = null;
+  $('#flyout').hidden = true;
+  refreshRail();
 }
 
-for (const [label, fn] of [
-  ['3D', () => viewport.frameAll(false)],
-  ['Vue de dessus', () => viewport.frameAll(true)],
-] as [string, () => void][]) {
-  const b = document.createElement('button');
-  b.textContent = label;
-  b.onclick = fn;
-  vt.appendChild(b);
+function refreshRail() {
+  const rail = $('#toolrail');
+  const items: ([string, string, string, () => void, boolean] | null)[] = [
+    ['cursor', 'Sélection', 'V', () => setTool('select'), tool === 'select'],
+    ['pen', 'Stylo — tracer un parcours', 'P', () => setTool(tool === 'pen' ? 'select' : 'pen'), tool === 'pen'],
+    null,
+    ['grid', 'Catalogue', 'C', () => (closeFlyout(), catalog.toggle()), catalog.isOpen()],
+    ['layout', 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
+    ['waves', "Plan d'eau & public", '', () => openFlyout('site'), flyout === 'site'],
+    null,
+    ['cube', 'Vue 3D', '', () => viewport.frameAll(false), false],
+    ['top', 'Vue de dessus', '', () => viewport.frameAll(true), false],
+    ['layers', 'Affichage', '', () => openFlyout('layers'), flyout === 'layers'],
+    ['help', 'Commandes', '?', () => openFlyout('help'), flyout === 'help'],
+  ];
+  rail.innerHTML = '';
+  for (const it of items) {
+    if (!it) {
+      rail.appendChild(h(`<span class="tool-sep"></span>`));
+      continue;
+    }
+    const [ic, tip, key, fn, on] = it;
+    const b = h(`<button class="tool ${on ? 'on' : ''}" data-tip="${esc(tip)}${key ? ` (${key})` : ''}">${icon(ic, 20)}${key ? `<span class="key">${key}</span>` : ''}</button>`);
+    b.onclick = fn;
+    rail.appendChild(b);
+  }
+  refreshHotbarIfNeeded();
 }
+let lastCatalogState: boolean | null = null;
+function refreshHotbarIfNeeded() {
+  if (lastCatalogState !== catalog.isOpen()) {
+    lastCatalogState = catalog.isOpen();
+    refreshHotbar();
+  }
+}
+
+// ------------------------------------------------ barre supérieure
+
+const top = $('#top-actions');
+const topButtons: [string, string, string][] = [
+  ['undo', 'undo', 'Annuler (Ctrl+Z)'],
+  ['redo', 'redo', 'Rétablir (Ctrl+Y)'],
+  ['new', 'plus', 'Nouveau parc'],
+  ['open', 'folder', 'Ouvrir un projet'],
+  ['save', 'save', 'Enregistrer (Ctrl+S)'],
+  ['export-menu', 'download', 'Exporter'],
+];
+for (const [a, ic, tip] of topButtons) top.appendChild(h(`<button class="icon-btn" data-action="${a}" title="${tip}">${icon(ic, 19)}</button>`));
+$('.btn-generate').innerHTML = `${icon('shuffle', 17)}<span>Générer un parc</span>`;
+$('[data-action=gen-settings]').innerHTML = icon('settings', 18);
+
+const exportMenu = $('#export-menu');
+exportMenu.innerHTML = [
+  ['report', 'file', 'Devis PDF'],
+  ['csv', 'table', 'Liste Excel (.csv)'],
+  ['png', 'image', "Capture d'écran"],
+  ['json', 'download', 'Fichier projet (.json)'],
+  ['share', 'share', 'Copier le lien de partage'],
+]
+  .map(([a, ic, l]) => `<button data-action="${a}">${icon(ic, 17)}${l}</button>`)
+  .join('');
 
 const nameInput = $<HTMLInputElement>('#project-name');
 nameInput.onchange = () => store.update((p) => (p.name = nameInput.value || 'Parc sans nom'));
+
+// ------------------------------------------------ rafraîchissement
 
 let saveTimer = 0;
 let lastAudience = store.project.audience;
 function refreshUI() {
   if (document.activeElement !== nameInput) nameInput.value = store.project.name;
-  renderInspector(store, {
-    rotate: rotateSelection,
-    duplicate: duplicateSelection,
-    remove: deleteSelection,
-    focus: () => viewport.focusSelection(),
-  });
-  renderSite(store, () => catalog.redraw());
-  renderSummary(store);
-  renderIssues(store, (uids) => {
+  renderInspector(store, { rotate: rotateSelection, duplicate: duplicateSelection, remove: deleteSelection, focus: () => viewport.focusSelection() });
+  renderHud(store, (uids) => {
     store.select(uids);
     viewport.focusSelection();
   });
@@ -321,6 +410,7 @@ function refreshUI() {
     lastAudience = store.project.audience;
     catalog.redraw();
   }
+  refreshHotbar();
   clearTimeout(saveTimer);
   saveTimer = window.setTimeout(() => autosave(store.project), 600);
 }
@@ -331,14 +421,14 @@ viewport.onStroke = (pts) => {
   const params = { ...genParams, audience: store.project.audience, seed: randomSeed() };
   const res = followStroke(store.project.site, store.project.modules, pts, params);
   if (!res || !res.modules.length) {
-    toast('Aucun module ne peut suivre ce tracé ici (trop court, trop près du bord ou d’autres modules).');
+    toast('Aucun module ne peut suivre ce tracé ici : trop court, trop près du bord ou d’autres modules.');
     return;
   }
   const added = res.modules.map((m) => ({ ...m, uid: store.newUid() }));
   store.update((p) => p.modules.push(...added));
   store.select(added.map((m) => m.uid));
   const pct = Math.round(res.coverage * 100);
-  toast(`✏️ ${added.length} modules posés sur ${Math.round(res.length)} m de tracé${res.extended ? ' (parc prolongé)' : ''}${pct < 90 ? ` — ${pct} % du tracé couvert` : ''}. Ctrl+Z pour annuler.`);
+  toast(`${added.length} modules posés sur ${Math.round(res.length)} m${res.extended ? ', parc prolongé' : ''}${pct < 90 ? ` (${pct} % du tracé)` : ''} — Ctrl+Z pour annuler`);
 };
 const tip = $('#tooltip');
 viewport.onHover = (m, x, y) => {
@@ -347,13 +437,13 @@ viewport.onHover = (m, x, y) => {
     return;
   }
   const s = spec(m.type);
-  tip.innerHTML = `<b>${s.name}</b> · ${s.displaySize ?? `${s.L} × ${s.W} m`} · H ${s.H} m`;
+  tip.innerHTML = `<b>${esc(s.name)}</b> <span>${s.displaySize ?? `${s.L} × ${s.W} m`} · ${s.H} m</span>`;
   tip.style.left = `${x + 14}px`;
   tip.style.top = `${y + 14}px`;
   tip.hidden = false;
 };
 
-// ------------------------------------------------ actions barre supérieure
+// ------------------------------------------------ actions
 
 const fileInput = $<HTMLInputElement>('#file-input');
 fileInput.onchange = async () => {
@@ -362,16 +452,16 @@ fileInput.onchange = async () => {
   try {
     store.setProject(parseProject(await f.text()));
     viewport.frameAll();
-    toast(`Projet « ${store.project.name} » ouvert.`);
+    toast(`Projet « ${store.project.name} » ouvert`);
   } catch (e) {
     toast(`Impossible d'ouvrir ce fichier : ${(e as Error).message}`);
   }
   fileInput.value = '';
 };
 
-const actions: Record<string, () => void> = {
+const actions: Record<string, (btn: HTMLElement) => void> = {
   new: () => {
-    if (store.project.modules.length && !confirm('Créer un nouveau projet ? Le projet actuel reste récupérable avec « Annuler ».')) return;
+    if (store.project.modules.length && !confirm('Créer un nouveau parc ? Le parc actuel reste récupérable avec Annuler.')) return;
     store.setProject({ ...emptyProject(), site: { ...store.project.site }, audience: store.project.audience });
     openStartDialog();
   },
@@ -379,14 +469,16 @@ const actions: Record<string, () => void> = {
   save: () => {
     autosave(store.project);
     downloadJSON(store.project);
-    toast('Projet enregistré (navigateur + fichier .json).');
+    toast('Projet enregistré');
   },
-  'export-menu': () => {
-    const m = $('#export-menu');
-    m.hidden = !m.hidden;
+  'export-menu': (btn) => {
+    const r = btn.getBoundingClientRect();
+    exportMenu.style.top = `${r.bottom + 10}px`;
+    exportMenu.style.left = `${Math.min(r.left, window.innerWidth - 260)}px`;
+    exportMenu.hidden = !exportMenu.hidden;
   },
   report: () => {
-    if (!printReport(store.project, store.derived.stats, store.derived.issues, viewport.screenshot())) toast('Autorisez les fenêtres pop-up pour générer le devis PDF.');
+    if (!printReport(store.project, store.derived.stats, store.derived.issues, viewport.screenshot())) toast('Autorisez les fenêtres pop-up pour générer le devis PDF');
   },
   csv: () => downloadCSV(store.project, store.derived.stats),
   json: () => downloadJSON(store.project),
@@ -396,9 +488,9 @@ const actions: Record<string, () => void> = {
     history.replaceState(null, '', link);
     try {
       await navigator.clipboard.writeText(link);
-      toast('Lien de partage copié dans le presse-papiers.');
+      toast('Lien de partage copié');
     } catch {
-      toast('Lien de partage placé dans la barre d’adresse.');
+      toast('Lien de partage placé dans la barre d’adresse');
     }
   },
   undo: () => store.undo(),
@@ -406,15 +498,16 @@ const actions: Record<string, () => void> = {
   random: randomPark,
   'gen-settings': openGeneratorDialog,
 };
-document.querySelectorAll<HTMLElement>('[data-action]').forEach((b) => {
-  b.addEventListener('click', (e) => {
+document.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-action]');
+  if (btn && actions[btn.dataset.action!]) {
     e.stopPropagation();
-    const a = b.dataset.action!;
-    if (a !== 'export-menu') $('#export-menu').hidden = true;
-    actions[a]?.();
-  });
+    if (btn.dataset.action !== 'export-menu') exportMenu.hidden = true;
+    actions[btn.dataset.action!](btn);
+    return;
+  }
+  exportMenu.hidden = true;
 });
-document.addEventListener('click', () => ($('#export-menu').hidden = true));
 
 // ------------------------------------------------ clavier
 
@@ -426,15 +519,22 @@ window.addEventListener('keydown', (e) => {
   if (ctrl && k === 'z' && !e.shiftKey) return e.preventDefault(), store.undo();
   if (ctrl && (k === 'y' || (k === 'z' && e.shiftKey))) return e.preventDefault(), store.redo();
   if (ctrl && k === 'd') return e.preventDefault(), duplicateSelection();
-  if (ctrl && k === 's') return e.preventDefault(), actions.save();
+  if (ctrl && k === 's') return e.preventDefault(), actions.save(document.body);
   if (ctrl && k === 'a') return e.preventDefault(), store.select(store.project.modules.map((m) => m.uid));
+  if (ctrl) return;
   if (k === 'delete' || k === 'backspace') return e.preventDefault(), deleteSelection();
+  if (/^[1-9]$/.test(k) && recent[Number(k) - 1]) return addModule(recent[Number(k) - 1]);
+  if (k === 'c') return closeFlyout(), catalog.toggle();
+  if (k === 'v') return setTool('select');
+  if (k === 'p') return setTool(tool === 'pen' ? 'select' : 'pen');
   if (k === 'r') return rotateSelection(e.shiftKey ? 15 : 90);
   if (k === 'g') return randomPark();
   if (k === 'f') return viewport.focusSelection();
-  if (k === 'p') return setPen(!viewport.penMode);
+  if (k === '?') return openFlyout('help');
   if (k === 'escape') {
-    if (viewport.penMode) return setPen(false);
+    if (catalog.isOpen()) return catalog.close();
+    if (flyout) return closeFlyout();
+    if (tool === 'pen') return setTool('select');
     return store.select([]);
   }
   const step = e.shiftKey ? 0.1 : 0.5;
@@ -446,12 +546,13 @@ window.addEventListener('keydown', (e) => {
 
 // ------------------------------------------------ démarrage
 
+refreshRail();
 const fromHash = projectFromHash(location.hash);
 const saved = fromHash ?? loadAutosave();
 if (saved) {
   store.setProject(saved, false);
   viewport.frameAll();
-  if (fromHash) toast(`Projet partagé « ${saved.name} » chargé.`);
+  if (fromHash) toast(`Projet partagé « ${saved.name} » chargé`);
 } else {
   refreshUI();
   viewport.frameAll();

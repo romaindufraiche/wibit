@@ -1,6 +1,8 @@
-# Wibit Create — configurateur 3D de parcs aquatiques gonflables (MVP)
+# Parkcraft — configurateur 3D de parcs aquatiques gonflables (MVP)
 
-Outil web de conception de parcs aquatiques gonflables **Wibit**, inspiré de Boaz Create :
+> Nom de travail neutre (défini dans `src/brand.ts`), pas une appellation officielle de la marque.
+
+Outil web de conception de parcs aquatiques gonflables, construit sur le catalogue **Wibit**, inspiré de Boaz Create :
 catalogue de modules en 3D, assemblage par aimantation, devis estimatif en temps réel,
 contrôle des règles de sécurité et — **fonction différenciante** — un générateur de
 **parcs aléatoires cohérents** (🎲).

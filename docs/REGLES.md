@@ -1,6 +1,6 @@
 # Règles de conception d'un parc Wibit — proposition v0.1
 
-Ce document décrit les règles utilisées par **Wibit Create** pour :
+Ce document décrit les règles utilisées par **Parkcraft** pour :
 
 1. **contrôler** un parc dessiné à la main (panneau « Contrôle des règles ») ;
 2. **générer** automatiquement un parc aléatoire **cohérent** (bouton 🎲).

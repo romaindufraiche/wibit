@@ -2,6 +2,7 @@ import { ACCESSORIES, spec } from '../catalog/modules';
 import type { Issue, Project } from '../core/types';
 import type { Stats } from '../rules/validate';
 import { AUDIENCE_LIMITS } from '../rules/validate';
+import { APP_NAME } from '../brand';
 
 export const eur = (v: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
 export const num = (v: number, d = 1) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: d }).format(v);
@@ -120,7 +121,7 @@ export function printReport(p: Project, stats: Stats, issues: Issue[], image: st
   const err = issues.filter((i) => i.level === 'error').length;
   const warn = issues.filter((i) => i.level === 'warning').length;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-  w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(p.name)} — Devis Wibit</title>
+  w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(p.name)} — Devis</title>
 <style>
 body{font:12px/1.45 Inter,system-ui,sans-serif;color:#14202e;margin:28px}
 h1{margin:0;font-size:22px} h2{font-size:14px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#0b5fae}
@@ -133,7 +134,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums} tfoot td{font-weig
 .note{font-size:10.5px;color:#637184;margin-top:18px}
 @media print{body{margin:12mm}}
 </style></head><body>
-<div class="head"><div><h1>${esc(p.name)}</h1><div class="muted">Wibit Create · ${new Date().toLocaleDateString('fr-FR')} · Public : ${AUDIENCE_LIMITS[p.audience].label}</div></div>
+<div class="head"><div><h1>${esc(p.name)}</h1><div class="muted">${APP_NAME} · ${new Date().toLocaleDateString('fr-FR')} · Public : ${AUDIENCE_LIMITS[p.audience].label}</div></div>
 <div class="muted">Plan d'eau ${num(p.site.length)} × ${num(p.site.width)} m · profondeur ${num(p.site.depth)} m</div></div>
 <img src="${image}" alt="Vue 3D du parc">
 <div class="kpis">
@@ -160,7 +161,7 @@ ${issues.length ? `<h2>Points à vérifier</h2><ul>${issues.filter((i) => i.leve
 
 // ------------------------------------------------ sauvegarde locale
 
-const AUTOSAVE_KEY = 'wibit-create:autosave';
+const AUTOSAVE_KEY = 'parkcraft:autosave';
 
 export function autosave(p: Project) {
   try {
