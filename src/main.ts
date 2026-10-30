@@ -259,13 +259,31 @@ renderThumbnails(MODULES, (id, url) => {
 
 // ------------------------------------------------ outils & panneaux latéraux
 
-type Tool = 'select' | 'pen';
+type Tool = 'select' | 'pen' | 'shore';
 let tool: Tool = 'select';
 let flyout: string | null = null;
 
+let shoreBar: HTMLElement | null = null;
 function setTool(t: Tool) {
   tool = t;
   viewport.setPenMode(t === 'pen');
+  viewport.setShoreEdit(t === 'shore');
+  shoreBar?.remove();
+  shoreBar = null;
+  if (t === 'shore') {
+    catalog.close();
+    closeFlyout();
+    store.select([]);
+    viewport.frameAll(true);
+    shoreBar = h(`<div class="shore-bar glass"><div><b>Remodeler le rivage</b><span>Glissez les points blancs · cliquez un point jaune pour en ajouter · clic droit pour supprimer</span></div>
+      <button class="btn" data-a="reset">Revenir au rectangle</button><button class="btn primary" data-a="done">Terminer</button></div>`);
+    shoreBar.querySelector<HTMLElement>('[data-a=done]')!.onclick = () => setTool('select');
+    shoreBar.querySelector<HTMLElement>('[data-a=reset]')!.onclick = () => {
+      store.update((p) => (p.site = { ...p.site, outline: undefined }));
+      viewport.setShoreEdit(true);
+    };
+    document.body.appendChild(shoreBar);
+  }
   if (t === 'pen') {
     catalog.close();
     toast('Stylo : tracez le parcours sur l’eau, relâchez pour poser les modules. Échap pour quitter.', 4500);
@@ -371,6 +389,7 @@ function openFlyout(name: string) {
         <kbd>C</kbd><span>Catalogue</span>
         <kbd>1 – 9</kbd><span>Poser un module récent</span>
         <kbd>P</kbd><span>Stylo (tracé à main levée)</span>
+        <kbd>B</kbd><span>Remodeler le rivage (ou clic sur la plage)</span>
         <kbd>G</kbd><span>Générer un parc</span>
         <kbd>R / Maj+R</kbd><span>Pivoter de 90° / 15°</span>
         <kbd>Ctrl+D</kbd><span>Dupliquer</span>
@@ -394,6 +413,7 @@ function refreshRail() {
   const items: ([string, string, string, () => void, boolean] | null)[] = [
     ['cursor', 'Sélection', 'V', () => setTool('select'), tool === 'select'],
     ['pen', 'Stylo — tracer un parcours', 'P', () => setTool(tool === 'pen' ? 'select' : 'pen'), tool === 'pen'],
+    ['shore', 'Remodeler le rivage (ou cliquer sur la plage)', 'B', () => setTool(tool === 'shore' ? 'select' : 'shore'), tool === 'shore'],
     null,
     ['grid', 'Catalogue', 'C', () => (closeFlyout(), catalog.toggle()), catalog.isOpen()],
     ['layout', 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
@@ -511,6 +531,7 @@ function refreshUI() {
 store.on(refreshUI);
 
 viewport.onDropModule = (type, x, z) => addModule(type, { x, z });
+viewport.onLandClick = () => setTool('shore');
 viewport.onStroke = (pts) => {
   const params = { ...genParams, audience: store.project.audience, seed: randomSeed() };
   const res = followStroke(store.project.site, store.project.modules, pts, params);
@@ -644,6 +665,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'c') return closeFlyout(), catalog.toggle();
   if (k === 'v') return setTool('select');
   if (k === 'p') return setTool(tool === 'pen' ? 'select' : 'pen');
+  if (k === 'b') return setTool(tool === 'shore' ? 'select' : 'shore');
   if (k === 'r') return rotateSelection(e.shiftKey ? 15 : 90);
   if (k === 'g') return randomPark();
   if (k === 'f') return viewport.focusSelection();
@@ -651,7 +673,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape') {
     if (catalog.isOpen()) return catalog.close();
     if (flyout) return closeFlyout();
-    if (tool === 'pen') return setTool('select');
+    if (tool === 'pen' || tool === 'shore') return setTool('select');
     return store.select([]);
   }
   const step = e.shiftKey ? 0.1 : 0.5;

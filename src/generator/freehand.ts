@@ -222,7 +222,8 @@ export function followStroke(site: Site, existing: Placed[], stroke: Vec2[], p: 
   for (let k = 0; k < attempts; k++) {
     const r = attemptStroke(site, existing, path, p, base + k * 104729);
     const added = r.b.mods.length - existing.length;
-    if (!added) continue;
+    // un accès posé seul (tracé impossible à suivre) n'est pas un résultat
+    if (!added || (!r.extended && added < 2)) continue;
     const variety = new Set(r.b.mods.slice(existing.length).map((m) => m.type)).size;
     const score = (1 - r.progress / path.total) * 100 + (r.deviation / added) * 6 - variety * 0.8;
     if (!best || score < best.score) best = { r, score };

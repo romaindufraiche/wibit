@@ -98,6 +98,8 @@ export interface Site {
   depth: number;
   /** Géoréférencement (plan d'ancrage GPS). */
   geo?: Geo;
+  /** Contour remodelé du plan d'eau (polygone) ; absent = rectangle longueur × largeur. */
+  outline?: Vec2[];
 }
 
 export interface Geo {

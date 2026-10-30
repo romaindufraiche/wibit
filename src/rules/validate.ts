@@ -1,5 +1,6 @@
 import { ACCESSORIES, spec } from '../catalog/modules';
-import { moduleOBB, obbCorners, obbDistance, obbInsideRect, obbOverlap, zoneOBB } from '../core/geometry';
+import { moduleOBB, obbCorners, obbDistance, obbOverlap, zoneOBB } from '../core/geometry';
+import { obbInsideSite, siteOutline } from '../core/region';
 import { buildGraph, components, freePorts, loopCount, near, type ParkGraph } from '../core/graph';
 import { computeAnchors } from '../core/anchors';
 import type { Audience, Issue, Placed, Project, Vec2 } from '../core/types';
@@ -64,6 +65,7 @@ export function validate(project: Project, graph: ParkGraph = buildGraph(project
   const issues: Issue[] = [];
   const add = (rule: string, level: Issue['level'], message: string, uids: string[] = []) => issues.push({ rule, level, message, uids });
   const obbs = new Map(mods.map((p) => [p.uid, moduleOBB(p, spec(p.type))]));
+  const outline = siteOutline(site);
   const byUid = new Map(mods.map((p) => [p.uid, p]));
 
   // R01 chevauchement / R05 écart minimal
@@ -86,7 +88,7 @@ export function validate(project: Project, graph: ParkGraph = buildGraph(project
     const s = spec(p.type);
     const o = obbs.get(p.uid)!;
     // R02 bords
-    if (!obbInsideRect(o, site.length / 2, site.width / 2, RULES.edgeMargin)) {
+    if (!obbInsideSite(o, outline, RULES.edgeMargin)) {
       add('R02', 'error', `${s.name} est à moins de ${RULES.edgeMargin} m du bord / rivage.`, [p.uid]);
     }
     // R03 profondeur
@@ -97,7 +99,7 @@ export function validate(project: Project, graph: ParkGraph = buildGraph(project
     for (const z of s.zones) {
       const zo = zoneOBB(p, z);
       const what = z.kind === 'slide' ? 'sortie de glisse' : 'zone de réception';
-      if (!obbInsideRect(zo, site.length / 2, site.width / 2, 0)) {
+      if (!obbInsideSite(zo, outline, 0)) {
         add('R04', 'error', `La ${what} de ${s.name} sort du plan d'eau.`, [p.uid]);
       }
       for (const q of mods) {

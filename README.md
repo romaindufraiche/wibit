@@ -38,7 +38,8 @@ Définir `SESSION_SECRET` (chaîne aléatoire) en production. Tests : `npm test`
 | Fonction | Détail |
 | --- | --- |
 | Catalogue | 88 modules Wibit (Fun, MatchTrack, WatchLine, Technique, Autonomes) avec dimensions, hauteur et profondeur officielles, vignettes 3D, recherche et filtres. |
-| Scène 3D | Plan d'eau paramétrable (longueur, largeur, profondeur), plage, ciel, ombres, grille, ligne de sécurité 3 m. |
+| Scène 3D | Plan d'eau paramétrable (longueur, largeur, profondeur), plage de sable texturée, berge immergée, écume, pelouse, ciel, ombres, grille, ligne de sécurité 3 m. |
+| Rivage remodelable | Clic sur la plage (ou touche B) : glisser les points du rivage, en ajouter / supprimer ; crique, avancée de terre, berge irrégulière. Règles, générateur et stylo respectent le nouveau contour. |
 | Édition | Glisser-déposer depuis le catalogue, clic = accrocher au module sélectionné, aimantation des connexions (Alt pour désactiver), rotation R / Maj+R, Ctrl+D, Suppr, flèches, multi-sélection Maj+clic, annuler / rétablir. |
 | Contrôle des règles | 15 règles (chevauchement, distance au bord, profondeur, zones de glisse, anti-coincement, accès, transitions de hauteur, enchaînements, surveillance, public…) — cliquer sur une alerte sélectionne les modules concernés. |
 | Devis | Total HT, capacité, emprise, nomenclature, produits à prévoir (ancrages, bouées, gilets, bateau). |

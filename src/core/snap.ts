@@ -1,5 +1,6 @@
 import { spec } from '../catalog/modules';
-import { moduleOBB, normAngle, obbInsideRect, obbOverlap, snapTransform, worldPorts } from './geometry';
+import { moduleOBB, normAngle, obbOverlap, snapTransform, worldPorts } from './geometry';
+import { obbInsideSite, siteOutline } from './region';
 import { buildGraph, freePorts } from './graph';
 import type { Placed, Site } from './types';
 
@@ -42,7 +43,7 @@ export function attachTo(type: string, anchor: Placed, all: Placed[], site: Site
     for (const port of s.ports) {
       const tf = snapTransform(port, fp);
       const o = moduleOBB(tf, s);
-      if (!obbInsideRect(o, site.length / 2, site.width / 2, 0)) continue;
+      if (!obbInsideSite(o, siteOutline(site), 0)) continue;
       if (all.some((q) => obbOverlap(o, moduleOBB(q, spec(q.type)), 0.08))) continue;
       return tf;
     }
@@ -59,7 +60,7 @@ export function freeSpot(type: string, x: number, z: number, all: Placed[], site
       const a = (i / n) * Math.PI * 2;
       const tf = { x: x + Math.cos(a) * r, z: z + Math.sin(a) * r, rot: 0 };
       const o = moduleOBB(tf, s, 1);
-      if (!obbInsideRect(o, site.length / 2, site.width / 2, 2)) continue;
+      if (!obbInsideSite(o, siteOutline(site), 2)) continue;
       if (all.some((q) => obbOverlap(o, moduleOBB(q, spec(q.type)), 0))) continue;
       return tf;
     }

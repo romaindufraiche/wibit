@@ -4,6 +4,9 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { spec } from '../catalog/modules';
 import { computeAnchors } from '../core/anchors';
 import { moduleOBB, obbCorners } from '../core/geometry';
+import { bounds, editableOutline, offsetPolygon, siteOutline } from '../core/region';
+import type { Project } from '../core/types';
+import { buildTerrain } from './terrain';
 import { findSnap } from '../core/snap';
 import type { Placed } from '../core/types';
 import type { Store } from '../editor/store';
@@ -36,6 +39,10 @@ const ZONE_MATS = {
   slide: new THREE.MeshBasicMaterial({ color: 0xff8a00, transparent: true, opacity: 0.22, depthWrite: false }),
   jump: new THREE.MeshBasicMaterial({ color: 0xff4fa3, transparent: true, opacity: 0.22, depthWrite: false }),
 };
+const HANDLE_GEO = new THREE.SphereGeometry(0.75, 16, 12);
+const HANDLE_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
+const MID_GEO = new THREE.SphereGeometry(0.45, 12, 8);
+const MID_MAT = new THREE.MeshBasicMaterial({ color: 0xffc20e, transparent: true, opacity: 0.55, depthTest: false });
 const STROKE_MAT = new THREE.MeshBasicMaterial({ color: 0xffc20e, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.9 });
 const ANCHOR_GEO = new THREE.SphereGeometry(0.28, 12, 8);
 const ANCHOR_MAT = new THREE.MeshStandardMaterial({ color: 0xff3b30 });
@@ -68,6 +75,14 @@ export class Viewport {
   private siteGroup = new THREE.Group();
   private buoyGroup = new THREE.Group();
   private anchorGroup = new THREE.Group();
+  private shoreGroup = new THREE.Group();
+  private land: THREE.Mesh[] = [];
+  private foam: THREE.MeshBasicMaterial | null = null;
+  /** Mode remodelage du rivage. */
+  shoreEdit = false;
+  private shoreDrag: { index: number } | null = null;
+  /** Clic sur la terre ferme (hors mode remodelage). */
+  onLandClick?: () => void;
   private sun = new THREE.DirectionalLight(0xffffff, 2.2);
   private raycaster = new THREE.Raycaster();
   private ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -99,7 +114,7 @@ export class Viewport {
     this.controls.maxDistance = 600;
 
     this.setupEnvironment();
-    this.scene.add(this.siteGroup, this.buoyGroup, this.anchorGroup);
+    this.scene.add(this.siteGroup, this.buoyGroup, this.anchorGroup, this.shoreGroup);
 
     const ro = new ResizeObserver(() => this.resize());
     ro.observe(container);
@@ -150,47 +165,38 @@ export class Viewport {
   }
 
   private buildSite() {
-    const { length: L, width: W, depth } = this.store.project.site;
-    const key = `${L}x${W}x${depth}`;
+    const { site } = this.store.project;
+    const key = JSON.stringify([site.length, site.width, site.depth, site.outline ?? null]);
     if (key === this.siteKey) return;
     this.siteKey = key;
     this.siteGroup.clear();
+    const terrain = buildTerrain(site);
+    this.land = terrain.land;
+    this.foam = terrain.foam;
+    this.siteGroup.add(terrain.group);
 
-    // plage côté rivage (z > W/2)
-    const sand = new THREE.Mesh(new THREE.BoxGeometry(L + 400, 2, 60), new THREE.MeshStandardMaterial({ color: 0xe8d3a2, roughness: 1 }));
-    sand.position.set(0, -0.7, W / 2 + 30);
-    sand.receiveShadow = true;
-    this.siteGroup.add(sand);
-    const grass = new THREE.Mesh(new THREE.BoxGeometry(L + 400, 2, 300), new THREE.MeshStandardMaterial({ color: 0x6f9b4e, roughness: 1 }));
-    grass.position.set(0, -0.5, W / 2 + 60 + 150);
-    this.siteGroup.add(grass);
-
-    // fond du plan d'eau utile (teinte selon profondeur)
-    const bottom = new THREE.Mesh(new THREE.PlaneGeometry(L, W), new THREE.MeshStandardMaterial({ color: 0x2d9cc4, roughness: 1 }));
-    bottom.rotation.x = -Math.PI / 2;
-    bottom.position.y = -Math.min(depth, 2.5) * 0.6;
-    this.siteGroup.add(bottom);
-
-    const rect = (hx: number, hz: number, color: number, dashed: boolean, y = 0.03) => {
-      const pts = [new THREE.Vector3(-hx, y, -hz), new THREE.Vector3(hx, y, -hz), new THREE.Vector3(hx, y, hz), new THREE.Vector3(-hx, y, hz)];
-      const geo = new THREE.BufferGeometry().setFromPoints(pts);
-      const m = dashed ? new THREE.LineDashedMaterial({ color, dashSize: 1, gapSize: 0.7 }) : new THREE.LineBasicMaterial({ color });
+    const P = siteOutline(site);
+    const loop = (poly: { x: number; z: number }[], color: number, dashed: boolean, y: number) => {
+      const geo = new THREE.BufferGeometry().setFromPoints(poly.map((p) => new THREE.Vector3(p.x, y, p.z)));
+      const m = dashed ? new THREE.LineDashedMaterial({ color, dashSize: 1, gapSize: 0.7 }) : new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 });
       const line = new THREE.LineLoop(geo, m);
       line.computeLineDistances();
       return line;
     };
-    this.siteGroup.add(rect(L / 2, W / 2, 0xffffff, false));
-    this.siteGroup.add(rect(L / 2 - RULES.edgeMargin, W / 2 - RULES.edgeMargin, 0xffa000, true));
+    this.siteGroup.add(loop(offsetPolygon(P, -RULES.edgeMargin), 0xffa000, true, 0.03));
 
-    const grid = new THREE.GridHelper(Math.max(L, W), Math.max(L, W), 0xffffff, 0xffffff);
+    const b = bounds(P);
+    const L = b.maxX - b.minX,
+      W = b.maxZ - b.minZ;
+    const size = Math.ceil(Math.max(L, W));
+    const grid = new THREE.GridHelper(size, size, 0xffffff, 0xffffff);
     (grid.material as THREE.Material).transparent = true;
     (grid.material as THREE.Material).opacity = 0.06;
-    grid.scale.set(L / Math.max(L, W), 1, W / Math.max(L, W));
-    grid.position.y = 0.01;
+    grid.position.set((b.minX + b.maxX) / 2, 0.01, (b.minZ + b.maxZ) / 2);
     grid.name = 'grid';
     this.siteGroup.add(grid);
 
-    const s = Math.max(L, W) * 0.75 + 20;
+    const s = Math.max(L, W) * 0.75 + 30;
     const cam = this.sun.shadow.camera;
     cam.left = -s;
     cam.right = s;
@@ -198,6 +204,62 @@ export class Viewport {
     cam.bottom = -s;
     cam.far = 500;
     cam.updateProjectionMatrix();
+    this.updateShoreHandles();
+  }
+
+  // ------------------------------------------------------------ remodelage du rivage
+
+  /** Active / désactive l'édition du contour du plan d'eau (poignées sur le rivage). */
+  setShoreEdit(on: boolean) {
+    this.shoreEdit = on;
+    if (on && !this.store.project.site.outline) {
+      // on part d'un rectangle subdivisé pour avoir des points à déplacer
+      const outline = editableOutline(this.store.project.site);
+      this.store.update((p) => (p.site = { ...p.site, outline }), false);
+    }
+    this.updateShoreHandles();
+  }
+
+  private updateShoreHandles() {
+    this.shoreGroup.clear();
+    if (!this.shoreEdit) return;
+    const P = siteOutline(this.store.project.site);
+    P.forEach((p, i) => {
+      const h = new THREE.Mesh(HANDLE_GEO, HANDLE_MAT);
+      h.position.set(p.x, 0.5, p.z);
+      h.userData.vertex = i;
+      h.renderOrder = 12;
+      this.shoreGroup.add(h);
+      const q = P[(i + 1) % P.length];
+      const m = new THREE.Mesh(MID_GEO, MID_MAT);
+      m.position.set((p.x + q.x) / 2, 0.45, (p.z + q.z) / 2);
+      m.userData.insertAfter = i;
+      m.renderOrder = 12;
+      this.shoreGroup.add(m);
+    });
+    const line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(P.map((p) => new THREE.Vector3(p.x, 0.4, p.z))), new THREE.LineBasicMaterial({ color: 0xffc20e, depthTest: false }));
+    line.renderOrder = 11;
+    this.shoreGroup.add(line);
+  }
+
+  private pickShore(e: { clientX: number; clientY: number }): THREE.Object3D | null {
+    this.raycaster.setFromCamera(this.ndc(e), this.camera);
+    return this.raycaster.intersectObjects(this.shoreGroup.children.filter((c) => (c as THREE.Mesh).isMesh), false)[0]?.object ?? null;
+  }
+
+  private pickLand(e: { clientX: number; clientY: number }): boolean {
+    this.raycaster.setFromCamera(this.ndc(e), this.camera);
+    const landHit = this.raycaster.intersectObjects(this.land, false)[0];
+    if (!landHit) return false;
+    const modHit = this.raycaster.intersectObjects([...this.objs.values()].map((o) => o.model), true)[0];
+    return !modHit || modHit.distance > landHit.distance;
+  }
+
+  private setOutline(outline: { x: number; z: number }[], live: boolean) {
+    const b = bounds(outline);
+    const apply = (p: Project) => (p.site = { ...p.site, outline, length: Math.round((b.maxX - b.minX) * 10) / 10, width: Math.round((b.maxZ - b.minZ) * 10) / 10 });
+    if (live) this.store.live(apply);
+    else this.store.update(apply);
   }
 
   // ------------------------------------------------------------ synchro projet -> scène
@@ -355,6 +417,28 @@ export class Viewport {
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     el.addEventListener('pointerdown', (e) => {
       this.downAt = { x: e.clientX, y: e.clientY };
+      if (this.shoreEdit) {
+        const h = this.pickShore(e);
+        if (h && e.button === 2 && h.userData.vertex !== undefined) {
+          const P = siteOutline(this.store.project.site);
+          if (P.length > 3) this.setOutline(P.filter((_, i) => i !== h.userData.vertex), false);
+          return;
+        }
+        if (h && e.button === 0) {
+          const P = siteOutline(this.store.project.site).map((p) => ({ ...p }));
+          let index = h.userData.vertex as number | undefined;
+          this.store.checkpoint();
+          if (index === undefined) {
+            index = (h.userData.insertAfter as number) + 1;
+            P.splice(index, 0, { x: h.position.x, z: h.position.z });
+            this.setOutline(P, true);
+          }
+          this.shoreDrag = { index };
+          this.controls.enabled = false;
+          el.setPointerCapture(e.pointerId);
+          return;
+        }
+      }
       if (e.button !== 0) return;
       if (this.penMode) {
         const p = this.groundPoint(e);
@@ -382,6 +466,14 @@ export class Viewport {
       this.drag = { start, orig, moved: false, anchor: uid };
     });
     el.addEventListener('pointermove', (e) => {
+      if (this.shoreDrag) {
+        const p = this.groundPoint(e);
+        if (!p) return;
+        const P = siteOutline(this.store.project.site).map((q) => ({ ...q }));
+        P[this.shoreDrag.index] = { x: Math.round(p.x * 4) / 4, z: Math.round(p.z * 4) / 4 };
+        this.setOutline(P, true);
+        return;
+      }
       if (this.stroke) {
         const p = this.groundPoint(e);
         const last = this.stroke.pts[this.stroke.pts.length - 1];
@@ -427,6 +519,12 @@ export class Viewport {
       }
     });
     const end = (e: PointerEvent) => {
+      if (this.shoreDrag) {
+        this.shoreDrag = null;
+        this.controls.enabled = true;
+        if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+        return;
+      }
       if (this.stroke) {
         const pts = this.stroke.pts;
         this.controls.enabled = true;
@@ -449,6 +547,7 @@ export class Viewport {
       }
       if (this.downAt && e.button === 0 && Math.hypot(e.clientX - this.downAt.x, e.clientY - this.downAt.y) < 4 && !this.pick(e)) {
         this.store.select([]);
+        if (!this.shoreEdit && !this.penMode && this.pickLand(e)) this.onLandClick?.();
       }
       this.downAt = null;
     };
@@ -563,6 +662,7 @@ export class Viewport {
     const t = this.clock.elapsedTime;
     this.onFrame?.(dt);
     (this.water.material as THREE.MeshPhysicalMaterial).clearcoatRoughness = 0.5 + Math.sin(t * 0.7) * 0.05;
+    if (this.foam) this.foam.opacity = 0.4 + Math.sin(t * 1.3) * 0.15;
     if (this.controls.enabled) this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }

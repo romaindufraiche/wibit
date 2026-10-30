@@ -36,6 +36,7 @@ const P: Record<string, string> = {
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/>',
   cloud: '<path d="M17.5 19a4.5 4.5 0 100-9h-1.8A7 7 0 104 15.3"/><path d="M12 12v9M8 17l4 4 4-4"/>',
   camera: '<path d="M23 7l-7 5 7 5z"/><rect x="1" y="5" width="15" height="14" rx="2"/>',
+  shore: '<path d="M3 20c3-1 4-5 8-5s5 3 10 2"/><circle cx="6" cy="8" r="1.6"/><circle cx="12" cy="5" r="1.6"/><circle cx="18" cy="9" r="1.6"/><path d="M7.4 7.3l3.2-1.6M13.5 5.8l3.1 2.4"/>',
   table: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
 };
 

@@ -693,15 +693,12 @@ select {
 }
 .dot.ok {
   background: var(--green);
-  box-shadow: 0 0 8px var(--green);
 }
 .dot.warning {
   background: var(--orange);
-  box-shadow: 0 0 8px var(--orange);
 }
 .dot.error {
   background: var(--red);
-  box-shadow: 0 0 8px var(--red);
 }
 .dot.info {
   background: var(--blue);
@@ -1189,7 +1186,8 @@ body.playing .hotbar,
 body.playing .hud,
 body.playing .inspector,
 body.playing .tooltip,
-body.playing .menu {
+body.playing .menu,
+body.playing .shore-bar {
   display: none !important;
 }
 body.playing::before,
@@ -1335,4 +1333,26 @@ body.playing::after {
   display: inline-block;
   vertical-align: -3px;
   margin-right: 4px;
+}
+
+/* remodelage du rivage */
+.shore-bar {
+  position: fixed;
+  left: 50%;
+  top: 76px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 16px;
+  z-index: 18;
+}
+.shore-bar div {
+  display: flex;
+  flex-direction: column;
+  margin-right: 8px;
+}
+.shore-bar span {
+  color: var(--muted);
+  font-size: 12px;
 }

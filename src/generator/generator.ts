@@ -1,7 +1,8 @@
 import { MODULES, spec } from '../catalog/modules';
-import { moduleOBB, obbDistance, obbInsideRect, obbOverlap, pointInOBB, snapTransform, worldPorts, zoneOBB, type OBB } from '../core/geometry';
+import { angleOf, moduleOBB, obbDistance, obbOverlap, pointInOBB, snapTransform, worldPorts, zoneOBB, type OBB } from '../core/geometry';
+import { bounds, insideSite, obbInsideSite, shoreEdges, siteOutline } from '../core/region';
 import { buildGraph } from '../core/graph';
-import type { Audience, ModuleSpec, Placed, Project, Site } from '../core/types';
+import type { Audience, ModuleSpec, Placed, Project, Site, Vec2 } from '../core/types';
 import { AUDIENCE_LIMITS, RULES, computeStats, validate } from '../rules/validate';
 import { hashSeed, makeRng, type Rng } from './rng';
 
@@ -90,6 +91,8 @@ export class Builder {
   /** Nombre de modules existants (non modifiables) en tête de `mods`. */
   lockCount = 0;
   private n = 0;
+  /** Contour du plan d'eau (polygone). */
+  readonly outline: Vec2[];
   readonly allowed: ModuleSpec[];
   readonly targetDiff: number;
   readonly maxRun: number;
@@ -101,6 +104,7 @@ export class Builder {
     readonly rng: Rng,
   ) {
     const lim = AUDIENCE_LIMITS[p.audience];
+    this.outline = siteOutline(site);
     this.allowed = MODULES.filter((s) => s.depth <= site.depth && (s.role === 'watch' || (s.H <= lim.maxH && s.diff <= lim.maxDiff)));
     this.targetDiff = Math.min(lim.maxDiff, 1 + (p.intensity - 1) * 0.9);
     this.maxRun = p.intensity >= 4 ? 4 : 3;
@@ -187,9 +191,7 @@ export class Builder {
   /** Le module candidat (transform tf) peut-il être posé ? */
   fits(s: ModuleSpec, tf: { x: number; z: number; rot: number }, parent: string | null): boolean {
     const o = moduleOBB(tf, s);
-    const hx = this.site.length / 2,
-      hz = this.site.width / 2;
-    if (!obbInsideRect(o, hx, hz, RULES.edgeMargin)) return false;
+    if (!obbInsideSite(o, this.outline, RULES.edgeMargin)) return false;
     // modules auxquels le candidat se connecte (parent + fermetures de boucle)
     const linked = new Set<string>();
     if (parent) linked.add(parent);
@@ -206,7 +208,7 @@ export class Builder {
     }
     for (const z of s.zones) {
       const zo = zoneOBB(tf, z);
-      if (!obbInsideRect(zo, hx, hz, 0)) return false;
+      if (!obbInsideSite(zo, this.outline, 0)) return false;
       for (const m of this.mods) if (obbOverlap(zo, this.obbs.get(m.uid)!, 0.05)) return false;
     }
     for (const z of this.zones) if (obbOverlap(o, z.o, 0.05)) return false;
@@ -260,12 +262,10 @@ export class Builder {
 
   /** Distance d'eau libre devant un port (m). */
   clearance(op: { x: number; z: number; dx: number; dz: number }, max = 40): number {
-    const hx = this.site.length / 2 - RULES.edgeMargin,
-      hz = this.site.width / 2 - RULES.edgeMargin;
     for (let d = 0.5; d <= max; d += 0.5) {
       const x = op.x + op.dx * d,
         z = op.z + op.dz * d;
-      if (Math.abs(x) > hx || Math.abs(z) > hz) return d;
+      if (!insideSite({ x, z }, this.outline, RULES.edgeMargin)) return d;
       for (const o of this.obbs.values()) {
         if (pointInOBB({ x, z }, { ...o, hx: o.hx + 1, hz: o.hz + 1 }) && d > 1.2) return d;
       }
@@ -368,22 +368,25 @@ export class Builder {
     let types = [...stockEntries, ...prefs].filter((t) => this.canUse(t));
     if (!types.length) types = this.usable().filter((s) => s.role === 'connector' && s.ports.some((pp) => pp.id === 'b')).map((s) => s.id);
     if (!types.length) return null;
-    const hx = this.site.length / 2 - RULES.edgeMargin;
-    for (let attempt = 0; attempt < 12; attempt++) {
+    // accès posé sur la berge côté plage, port de sortie tourné vers le large
+    const edges = shoreEdges(this.outline);
+    const totalLen = edges.reduce((a, e) => a + e.len, 0);
+    for (let attempt = 0; attempt < 16; attempt++) {
       const type = types[Math.min(types.length - 1, Math.floor(attempt / 4))];
       const s = spec(type);
       const out = s.ports.find((pp) => pp.id === 'b')!;
-      // port de sortie orienté vers le large (−z)
-      const rot = Math.atan2(1, 0) - Math.atan2(-out.dz, out.dx);
-      const span = Math.max(0, hx - s.W / 2);
-      const x = (this.rng.next() * 2 - 1) * span * 0.6;
-      const z = this.site.width / 2 - RULES.edgeMargin - s.L / 2;
-      const tf = { x, z, rot };
+      let r = this.rng.next() * totalLen;
+      const e = edges.find((ed) => (r -= ed.len) <= 0) ?? edges[0];
+      const t = 0.2 + this.rng.next() * 0.6;
+      const inward = { x: -e.n.x, z: -e.n.z };
+      const depth = RULES.edgeMargin + s.L / 2 + 0.05;
+      const rot = angleOf(inward.x, inward.z) - angleOf(out.dx, out.dz);
+      const tf = { x: e.a.x + (e.b.x - e.a.x) * t + inward.x * depth, z: e.a.z + (e.b.z - e.a.z) * t + inward.z * depth, rot };
       if (!this.canUse(type) || !this.fits(s, tf, null)) continue;
       const p = this.place(type, tf);
       const ports = this.portsOf(p.uid);
       // si Base (2 ports) : l'extrémité côté plage reste un accès libre
-      return ports.sort((a, b) => a.dz - b.dz)[0];
+      return ports.sort((a, b) => b.dx * inward.x + b.dz * inward.z - (a.dx * inward.x + a.dz * inward.z))[0];
     }
     return null;
   }
@@ -628,10 +631,11 @@ export class Builder {
     const n = count ?? this.rng.int(1, 3);
     for (let k = 0; k < n; k++) {
       const s = this.rng.pick(pool);
+      const bb = bounds(this.outline);
       for (let t = 0; t < 120; t++) {
         const tf = {
-          x: (this.rng.next() - 0.5) * (this.site.length - 2 * RULES.edgeMargin - s.L),
-          z: (this.rng.next() - 0.5) * (this.site.width - 2 * RULES.edgeMargin - s.L),
+          x: bb.minX + this.rng.next() * (bb.maxX - bb.minX),
+          z: bb.minZ + this.rng.next() * (bb.maxZ - bb.minZ),
           rot: (this.rng.int(0, 3) * Math.PI) / 2,
         };
         const o = moduleOBB(tf, s, 2);

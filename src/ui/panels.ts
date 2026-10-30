@@ -309,7 +309,13 @@ export function siteFlyout(store: Store, onChange: () => void): HTMLElement {
         if (k === 'audience') p.audience = inp.value as Audience;
         else {
           const i = inp as HTMLInputElement;
-          (p.site as any)[k] = Math.max(Number(i.min), Math.min(Number(i.max), Number(i.value) || 0));
+          const v = Math.max(Number(i.min), Math.min(Number(i.max), Number(i.value) || 0));
+          // un rivage remodelé suit le changement de dimensions (mise à l'échelle)
+          if (p.site.outline && (k === 'length' || k === 'width')) {
+            const f = v / ((p.site as any)[k] || v);
+            p.site.outline = p.site.outline.map((q) => (k === 'length' ? { x: q.x * f, z: q.z } : { x: q.x, z: q.z * f }));
+          }
+          (p.site as any)[k] = v;
         }
       });
       onChange();
