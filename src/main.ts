@@ -11,6 +11,7 @@ import { autosave, downloadCSV, downloadJSON, downloadPNG, loadAutosave, parsePr
 import { AUDIENCE_LIMITS } from './rules/validate';
 import { renderThumbnails } from './scene/thumbnails';
 import { Viewport } from './scene/viewport';
+import { PlayMode } from './scene/play';
 import { icon } from './ui/icons';
 import { exportAnchors, printAnchorPlan } from './io/anchorplan';
 import { eur } from './io/export';
@@ -22,6 +23,13 @@ const viewport = new Viewport(document.getElementById('viewport')!, store);
 // accès console pour démonstration / tests automatisés
 (window as any).__app = { store, viewport };
 let genParams: GenParams = { ...DEFAULT_PARAMS, seed: randomSeed() };
+const play = new PlayMode(viewport, store);
+function startPlay() {
+  store.select([]);
+  catalog.close();
+  closeFlyout();
+  if (!play.start()) toast('Construisez ou générez d’abord un parc.');
+}
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 document.title = APP_NAME;
@@ -409,6 +417,8 @@ const topButtons: [string, string, string][] = [
 ];
 for (const [a, ic, tip] of topButtons) top.appendChild(h(`<button class="icon-btn" data-action="${a}" title="${tip}">${icon(ic, 19)}</button>`));
 $('.btn-generate').innerHTML = `${icon('shuffle', 17)}<span>Générer un parc</span>`;
+const playBtn = h(`<button class="btn-play" data-action="play" title="Mode Play : voir le parc en action (Espace)">${icon('play', 15)}<span>Play</span></button>`);
+$('.gen-group').prepend(playBtn);
 $('[data-action=gen-settings]').innerHTML = icon('settings', 18);
 
 const exportMenu = $('#export-menu');
@@ -548,6 +558,7 @@ const actions: Record<string, (btn: HTMLElement) => void> = {
   undo: () => store.undo(),
   redo: () => store.redo(),
   random: randomPark,
+  play: startPlay,
   'gen-settings': openGeneratorDialog,
 };
 document.addEventListener('click', (e) => {
@@ -566,6 +577,11 @@ document.addEventListener('click', (e) => {
 window.addEventListener('keydown', (e) => {
   const tag = (e.target as HTMLElement).tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || document.querySelector('dialog[open]')) return;
+  if (play.active) {
+    if (e.key === 'Escape' || e.key === ' ') play.stop();
+    return;
+  }
+  if (e.key === ' ') return e.preventDefault(), startPlay();
   const ctrl = e.ctrlKey || e.metaKey;
   const k = e.key.toLowerCase();
   if (ctrl && k === 'z' && !e.shiftKey) return e.preventDefault(), store.undo();

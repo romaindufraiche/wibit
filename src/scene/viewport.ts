@@ -555,10 +555,15 @@ export class Viewport {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Appelé à chaque image (mode Play). */
+  onFrame?: (dt: number) => void;
+
   private frame() {
-    const t = this.clock.getElapsedTime();
+    const dt = this.clock.getDelta();
+    const t = this.clock.elapsedTime;
+    this.onFrame?.(dt);
     (this.water.material as THREE.MeshPhysicalMaterial).clearcoatRoughness = 0.5 + Math.sin(t * 0.7) * 0.05;
-    this.controls.update();
+    if (this.controls.enabled) this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 }
