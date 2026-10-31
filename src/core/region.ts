@@ -144,3 +144,46 @@ export function centroid(poly: Vec2[]): Vec2 {
   const b = bounds(poly);
   return { x: (b.minX + b.maxX) / 2, z: (b.minZ + b.maxZ) / 2 };
 }
+
+/**
+ * Contour « naturel » par défaut : plan d'eau arrondi aux berges irrégulières, avec une plage
+ * plus régulière côté rivage (z > 0) et une crique. Déterministe (même graine = même lac) et
+ * remis à l'échelle pour tenir exactement dans longueur × largeur.
+ */
+export function naturalOutline(length: number, width: number, seed = 7): Vec2[] {
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const ph = [rnd(), rnd(), rnd(), rnd(), rnd()].map((v) => v * Math.PI * 2);
+  const N = 72;
+  const raw: Vec2[] = [];
+  const bump = (t: number, center: number, w: number) => {
+    let d = t - center;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    return Math.exp(-((d / w) ** 2));
+  };
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * Math.PI * 2;
+    const c = Math.cos(t),
+      sn = Math.sin(t);
+    // ellipse légèrement carrée : un lac, pas un bassin
+    const n = 2.4;
+    const x = Math.sign(c) * Math.abs(c) ** (2 / n);
+    const z = Math.sign(sn) * Math.abs(sn) ** (2 / n);
+    // berges du large découpées, rivage (z > 0) plus calme
+    const calm = 1 - 0.55 * Math.max(0, sn);
+    let k = 1 + calm * (0.13 * Math.sin(2 * t + ph[0]) + 0.09 * Math.sin(3 * t + ph[1]) + 0.05 * Math.sin(5 * t + ph[2]) + 0.025 * Math.sin(8 * t + ph[3]));
+    // crique : l'eau entre dans la plage, un peu à droite du milieu du rivage
+    k += 0.22 * bump(t, Math.PI / 2 - 0.35, 0.3);
+    // pointe de terre (presqu'île) qui avance dans l'eau, à gauche du rivage
+    k -= 0.16 * bump(t, Math.PI / 2 + 0.75, 0.16);
+    // anse sur le côté droit
+    k += 0.1 * bump(t, -0.2 + ph[4] * 0.05, 0.35);
+    raw.push({ x: x * k, z: z * k });
+  }
+  const b = bounds(raw);
+  return raw.map((p) => ({
+    x: ((p.x - (b.minX + b.maxX) / 2) / (b.maxX - b.minX)) * length,
+    z: ((p.z - (b.minZ + b.maxZ) / 2) / (b.maxZ - b.minZ)) * width,
+  }));
+}

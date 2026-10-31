@@ -3,6 +3,7 @@ import { MODULES, spec } from './catalog/modules';
 import { attachTo, findSnap, freeSpot } from './core/snap';
 import type { Placed, Project } from './core/types';
 import { Store, emptyProject } from './editor/store';
+import { naturalOutline } from './core/region';
 import { followStroke } from './generator/freehand';
 import { DEFAULT_PARAMS, generatePark, type GenParams } from './generator/generator';
 import { randomSeed } from './generator/rng';
@@ -244,7 +245,8 @@ function openStartDialog() {
     </div>`;
   const go = (fn: () => void) => () => {
     dlg.querySelectorAll<HTMLInputElement>('[data-k]').forEach((i) => ((site as any)[i.dataset.k!] = Math.max(Number(i.min), Math.min(Number(i.max), Number(i.value) || 0))));
-    store.update((p) => (p.site = { ...site }), false);
+    // nouvelles dimensions : contour naturel redessiné à la bonne taille
+    store.update((p) => (p.site = { ...site, outline: naturalOutline(site.length, site.width) }), false);
     dlg.close();
     viewport.frameAll();
     fn();
@@ -382,7 +384,7 @@ function openFlyout(name: string) {
       const b = h(`<button class="tpl"><b>${t.name}</b><span>${t.desc}<br>${t.site.length} × ${t.site.width} m · profondeur ${t.site.depth} m</span></button>`);
       b.onclick = () => {
         genParams = { ...t.params };
-        runGenerator(t.params, { site: t.site, name: t.name });
+        runGenerator(t.params, { site: { ...t.site, outline: naturalOutline(t.site.length, t.site.width, t.site.length + t.site.width) }, name: t.name });
         closeFlyout();
       };
       list.appendChild(b);

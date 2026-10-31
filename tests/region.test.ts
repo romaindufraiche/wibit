@@ -31,3 +31,18 @@ describe('contour remodelé', () => {
     }
   });
 });
+
+describe('lac naturel par défaut', () => {
+  it('génère des parcs sans erreur sur un contour naturel', async () => {
+    const { naturalOutline } = await import('../src/core/region');
+    for (const [L, W] of [[320, 200], [180, 110], [120, 80]]) {
+      const site: Site = { length: L, width: W, depth: 3.5, outline: naturalOutline(L, W) };
+      for (const audience of ['kids', 'family', 'sport', 'mixed'] as const) {
+        const r = generatePark(site, { ...DEFAULT_PARAMS, audience, capacity: audience === 'kids' ? 40 : 100, seed: `nat-${L}-${audience}` });
+        expect(r.modules.length).toBeGreaterThan(5);
+        const errs = validate({ version: 1, name: '', site, audience, modules: r.modules }).filter((i) => i.level === 'error');
+        expect(errs).toHaveLength(0);
+      }
+    }
+  });
+});

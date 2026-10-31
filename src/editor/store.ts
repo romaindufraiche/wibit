@@ -1,5 +1,6 @@
 import { buildGraph, type ParkGraph } from '../core/graph';
 import type { Issue, Placed, Project } from '../core/types';
+import { naturalOutline } from '../core/region';
 import { computeStats, validate, type Stats } from '../rules/validate';
 
 export interface Derived {
@@ -17,7 +18,8 @@ export function emptyProject(): Project {
     version: 1,
     name: 'Nouveau parc',
     // grand plan d'eau par défaut : on doit sentir le lac, pas un bassin
-    site: { length: 320, width: 200, depth: 3.5 },
+    // contour naturel (berges irrégulières, crique côté plage) plutôt qu'un bassin rectangulaire
+    site: { length: 320, width: 200, depth: 3.5, outline: naturalOutline(320, 200) },
     audience: 'mixed',
     modules: [],
   };

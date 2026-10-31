@@ -62,7 +62,7 @@ export class Viewport {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
-  opts: ViewOptions = { grid: true, ports: true, zones: true, anchors: false, buoys: true };
+  opts: ViewOptions = { grid: true, ports: true, zones: true, anchors: false, buoys: false };
   onDropModule?: (type: string, x: number, z: number) => void;
   onHover?: (p: Placed | null, clientX: number, clientY: number) => void;
   /** Tracé à main levée terminé (points au sol). */

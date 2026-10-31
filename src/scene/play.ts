@@ -136,7 +136,7 @@ export class PlayMode {
     this.viewport.scene.add(this.group);
     // pas de repères techniques pendant la lecture
     this.savedOpts = { ...this.viewport.opts };
-    Object.assign(this.viewport.opts, { grid: false, ports: false, zones: false, anchors: false, buoys: true });
+    Object.assign(this.viewport.opts, { grid: false, ports: false, zones: false, anchors: false, buoys: false });
     this.viewport.refreshOverlays();
     this.spawn(Math.max(1, Math.round(this.capacity * this.ratio)));
     document.body.classList.add('playing');
