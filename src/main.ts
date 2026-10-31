@@ -611,7 +611,8 @@ viewport.onStroke = (pts) => {
   store.select(added.map((m) => m.uid));
   track('pen', { modules: added.length, length: Math.round(res.length) });
   const pct = Math.round(res.coverage * 100);
-  toast(`${added.length} modules posés sur ${Math.round(res.length)} m${res.extended ? ', parc prolongé' : ''}${pct < 90 ? ` (${pct} % du tracé)` : ''} — Ctrl+Z pour annuler`);
+  const shape = { droit: 'ligne droite', segments: 'segments droits et virages', boucle: 'boucle' }[res.shape];
+  toast(`${added.length} modules en ${shape}${res.extended ? ', parc prolongé' : ''}${pct < 90 ? ` (${pct} % du tracé)` : ''} — Ctrl+Z pour annuler`);
 };
 const tip = $('#tooltip');
 viewport.onHover = (m, x, y) => {

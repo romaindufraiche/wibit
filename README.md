@@ -53,8 +53,8 @@ Ajouter `-- --reset` pour supprimer d'abord les comptes de démonstration exista
 | Édition | Glisser-déposer depuis le catalogue, clic = accrocher au module sélectionné, aimantation des connexions (Alt pour désactiver), rotation R / Maj+R, Ctrl+D, Suppr, flèches, multi-sélection Maj+clic, annuler / rétablir. |
 | Contrôle des règles | 15 règles (chevauchement, distance au bord, profondeur, zones de glisse, anti-coincement, accès, transitions de hauteur, enchaînements, surveillance, public…) — cliquer sur une alerte sélectionne les modules concernés. |
 | Devis | Total HT, capacité, emprise, nomenclature, produits à prévoir (ancrages, bouées, gilets, bateau). |
-| 🎲 Générateur | Parc cohérent selon public, capacité, intensité, boucle InfinityLoop, grand toboggan, modules autonomes. Déterministe par graine. |
-| ✏️ Stylo main levée | Bouton « Stylo » (touche P) : tracez un parcours sur l'eau, au relâchement les modules se posent le long du tracé en respectant toutes les règles (virages, jonctions, enchaînements, fin de parcours). Commencer près d'une connexion libre prolonge un parc existant. Annulable en un Ctrl+Z. |
+| Générateur | Parc cohérent selon public, capacité, intensité, boucle InfinityLoop, grand toboggan, modules autonomes. Déterministe par graine. |
+| Stylo main levée | Bouton « Stylo » (touche P) : le tracé est redressé et interprété (ligne droite, segments avec virages à 45° / 90°, arcs, boucle fermée), puis rempli de modules alignés et réellement connectés, selon les règles du générateur. Commencer près d'une connexion libre prolonge un parc existant. Annulable en un Ctrl+Z. |
 | Budget | Budget maximum dans le générateur (produits à prévoir inclus). |
 | Mon parc & saison | Stock de modules possédés (import .json / .csv « module ; quantité » ou parc affiché) ; « Agrandir le parc affiché » avec un budget (ex. +50 000 €) ; « Nouvelle composition avec mon stock ». |
 | Plan d'ancrage | Position GPS + azimut du large ; export GPX (GPS Garmin, traceurs, Navionics, OsmAnd), KML (Google Earth, téléphone), CSV et plan imprimable. Ancres numérotées dans l'ordre de pose (tournée en bateau). |

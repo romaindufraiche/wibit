@@ -105,14 +105,26 @@ Boucle    := T-Connect → A → Virage → M → Virage → Bas(avec Junction) 
 
 ## 4. Stylo main levée
 
-Le tracé est rééchantillonné tous les 1 m et lissé. Le parcours démarre sur un port libre
-situé à moins de 4 m du début du tracé (prolongement d'un parc), sinon sur un accès posé et
-orienté selon le tracé. À chaque pas, parmi les modules autorisés par la grammaire
-(section 3, mêmes contraintes d'enchaînement et de hauteur), on garde celui dont la sortie
-colle le mieux au tracé : écart au tracé, écart du centre du module, alignement avec la
-tangente, avancée le long du tracé, variété. En cas d'impasse, retour arrière (jusqu'à 6
-fois). Le parcours se termine par un module de fin à moins de 3,5 m du bout du tracé, et
-des postes de surveillance sont ajoutés si la capacité l'exige.
+Le tracé est d'abord **interprété**, puis construit :
+
+1. **Nettoyage** : rééchantillonnage tous les 1 m, lissage du tremblement de la main.
+2. **Lecture de l'intention** :
+   - trait presque droit (écart au segment début–fin < 8 % de la longueur, min. 2,5 m) → **une ligne parfaitement droite** ;
+   - sinon simplification Douglas-Peucker (tolérance 5 % de la longueur, min. 2,2 m) ; chaque changement de
+     direction est **arrondi à 45° ou 90°** (les angles que les modules savent faire) ; en dessous de 22,5° on
+     considère que c'est la même ligne ;
+   - deux virages de 45° dans le même sens à moins de 7 m l'un de l'autre → **un virage courbe de 90°** (arc serré) ;
+     un grand arc devient une suite régulière de facettes à 45° ;
+   - tracé refermé (extrémités à moins de 12 % de la longueur) → **boucle InfinityLoop** aux dimensions du dessin
+     (axes principaux du tracé), accès du côté où l'on a commencé à dessiner.
+3. **Construction** : chaque segment est rempli de modules alignés bout à bout (connexions exactes, même cap),
+   en choisissant leurs longueurs pour arriver au sommet du virage suivant ; chaque virage est un vrai module de
+   virage (Curve, Bend, Turn SUS… pour les arcs ; Junction, Y-Connect, SideKick sinon), orienté pour sortir
+   exactement dans le cap suivant. Grammaire identique au générateur (plateforme de repos tous les 3–4 obstacles,
+   écarts de hauteur, enchaînements experts), fin de parcours par un module de fin.
+4. Départ à moins de 4 m d'une connexion libre orientée dans le sens du tracé → **prolongement du parc** dans l'axe
+   de cette connexion. Un seul poste de surveillance est ajouté, et seulement si les nouveaux modules sont à plus
+   de 25 m d'un poste existant.
 
 ## 5. Points à valider avec Wibit
 

@@ -480,14 +480,17 @@ export class Builder {
    * T → A → virage → M → virage → Bas (= A + 3 + B, avec une Junction) → virage → M → virage → B → T.
    * Les longueurs opposées sont égales, la boucle se referme donc exactement.
    */
-  tryRing(op: OpenPort): OpenPort | null {
-    const corners = this.usable().filter((s) => s.loopCorner && s.diff <= this.targetDiff + 1).map((s) => s.id);
+  tryRing(op: OpenPort, fixed?: { a: number; b: number; m: number; corner?: string }): OpenPort | null {
+    const corners = fixed?.corner ? [fixed.corner] : this.usable().filter((s) => s.loopCorner && s.diff <= this.targetDiff + 1).map((s) => s.id);
     if (!corners.length) return null;
     const straight = this.usable().filter((s) => (s.role === 'obstacle' || (s.role === 'tower' && s.H < 2.6)) && s.ports.length === 2 && (s.L === 3 || s.L === 6) && s.W <= 3.2 && s.ports[0].w <= 2);
     if (!straight.length) return null;
     const combos: { a: number; b: number; m: number }[] = [];
-    for (const a of [0, 3, 6]) for (const b of [0, 3]) for (const m of [3, 6, 9]) combos.push({ a, b, m });
-    this.rng.shuffle(combos);
+    if (fixed) combos.push(fixed);
+    else {
+      for (const a of [0, 3, 6]) for (const b of [0, 3]) for (const m of [3, 6, 9]) combos.push({ a, b, m });
+      this.rng.shuffle(combos);
+    }
     const mark = this.mods.length;
     const fill = (len: number, withJunction: boolean): string[] => {
       const seq: string[] = [];
