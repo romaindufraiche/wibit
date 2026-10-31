@@ -84,6 +84,8 @@ export class Viewport {
   /** Clic sur la terre ferme (hors mode remodelage). */
   onLandClick?: () => void;
   private sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  /** Le soleil (et sa zone d'ombre) suit le point visé : ombres nettes même sur un très grand lac. */
+  private sunOffset = new THREE.Vector3();
   private raycaster = new THREE.Raycaster();
   private ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   private drag: { start: THREE.Vector3; orig: Map<string, { x: number; z: number }>; moved: boolean; anchor: string } | null = null;
@@ -145,7 +147,8 @@ export class Viewport {
     this.scene.environment = pmrem.fromScene(envScene as any).texture;
 
     this.scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x2a5a78, 0.6));
-    this.sun.position.copy(sunDir).multiplyScalar(150);
+    this.sunOffset.copy(sunDir).multiplyScalar(150);
+    this.sun.position.copy(this.sunOffset);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(4096, 4096);
     this.sun.shadow.bias = -0.0004;
@@ -189,21 +192,14 @@ export class Viewport {
     const L = b.maxX - b.minX,
       W = b.maxZ - b.minZ;
     const size = Math.ceil(Math.max(L, W));
-    const grid = new THREE.GridHelper(size, size, 0xffffff, 0xffffff);
+    const grid = new THREE.GridHelper(size, size > 160 ? Math.round(size / 5) : size, 0xffffff, 0xffffff);
     (grid.material as THREE.Material).transparent = true;
     (grid.material as THREE.Material).opacity = 0.06;
     grid.position.set((b.minX + b.maxX) / 2, 0.01, (b.minZ + b.maxZ) / 2);
     grid.name = 'grid';
     this.siteGroup.add(grid);
 
-    const s = Math.max(L, W) * 0.75 + 30;
-    const cam = this.sun.shadow.camera;
-    cam.left = -s;
-    cam.right = s;
-    cam.top = s;
-    cam.bottom = -s;
-    cam.far = 500;
-    cam.updateProjectionMatrix();
+    this.sun.shadow.camera.far = 500;
     this.updateShoreHandles();
   }
 
@@ -605,9 +601,11 @@ export class Viewport {
   frameAll(top = false) {
     const mods = this.store.project.modules;
     const { site } = this.store.project;
-    let cx = 0,
-      cz = 0,
-      r = Math.max(site.length, site.width) * 0.6;
+    // lac vide : on cadre la zone de baignade près de la plage plutôt que tout le lac
+    const sb = bounds(siteOutline(site));
+    let cx = (sb.minX + sb.maxX) / 2,
+      cz = Math.max(sb.minZ + (sb.maxZ - sb.minZ) / 2, sb.maxZ - 45),
+      r = Math.min(Math.max(site.length, site.width) * 0.6, 55);
     if (mods.length) {
       let minX = Infinity,
         maxX = -Infinity,
@@ -664,6 +662,19 @@ export class Viewport {
     (this.water.material as THREE.MeshPhysicalMaterial).clearcoatRoughness = 0.5 + Math.sin(t * 0.7) * 0.05;
     if (this.foam) this.foam.opacity = 0.4 + Math.sin(t * 1.3) * 0.15;
     if (this.controls.enabled) this.controls.update();
+    // ombres : zone centrée sur le point visé, dimensionnée selon le zoom
+    const tgt = this.controls.target;
+    const half = THREE.MathUtils.clamp(this.camera.position.distanceTo(tgt) * 0.75, 30, 160);
+    const sc = this.sun.shadow.camera;
+    if (sc.right !== half) {
+      sc.left = -half;
+      sc.right = half;
+      sc.top = half;
+      sc.bottom = -half;
+      sc.updateProjectionMatrix();
+    }
+    this.sun.position.copy(tgt).add(this.sunOffset);
+    this.sun.target.position.copy(tgt);
     this.renderer.render(this.scene, this.camera);
   }
 }

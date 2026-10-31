@@ -12,7 +12,7 @@ import { AUDIENCE_LIMITS } from './rules/validate';
 import { renderThumbnails } from './scene/thumbnails';
 import { Viewport } from './scene/viewport';
 import { PlayMode } from './scene/play';
-import { icon } from './ui/icons';
+import { LOGO, icon } from './ui/icons';
 import { exportAnchors, printAnchorPlan } from './io/anchorplan';
 import { eur } from './io/export';
 import { seasonFlyout } from './ui/season';
@@ -35,6 +35,7 @@ function startPlay() {
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 document.title = APP_NAME;
 $('#brand-name').textContent = APP_NAME;
+$('.brand-mark').innerHTML = LOGO;
 
 // ------------------------------------------------ notifications
 
@@ -579,7 +580,7 @@ const actions: Record<string, (btn: HTMLElement) => void> = {
   new: () => {
     if (store.project.modules.length && !confirm('Créer un nouveau parc ? Le parc actuel reste récupérable avec Annuler.')) return;
     account.currentParkId = null;
-    store.setProject({ ...emptyProject(), site: { ...store.project.site }, audience: store.project.audience });
+    store.setProject({ ...emptyProject(), audience: store.project.audience });
     openStartDialog();
   },
   open: () => fileInput.click(),

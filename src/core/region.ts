@@ -21,9 +21,11 @@ export function siteOutline(site: Site): Vec2[] {
 }
 
 /** Rectangle subdivisé (un point tous les ~`step` m) : point de départ du remodelage. */
-export function editableOutline(site: Site, step = 12): Vec2[] {
+export function editableOutline(site: Site, step?: number): Vec2[] {
   if (site.outline && site.outline.length >= 3) return site.outline.map((p) => ({ ...p }));
   const r = rectOutline(site.length, site.width);
+  // environ 40 points sur le pourtour, quelle que soit la taille du lac
+  step = step ?? Math.max(12, (2 * (site.length + site.width)) / 40);
   const out: Vec2[] = [];
   for (let i = 0; i < 4; i++) {
     const a = r[i],

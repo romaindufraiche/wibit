@@ -16,7 +16,8 @@ export function emptyProject(): Project {
   return {
     version: 1,
     name: 'Nouveau parc',
-    site: { length: 80, width: 60, depth: 3.5 },
+    // grand plan d'eau par défaut : on doit sentir le lac, pas un bassin
+    site: { length: 320, width: 200, depth: 3.5 },
     audience: 'mixed',
     modules: [],
   };
