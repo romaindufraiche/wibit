@@ -33,6 +33,16 @@ Production : `npm run build` puis `npm start` (serveur Node : site + API). Sans 
 les comptes et parcs sont stockés dans `data/db.json` ; avec `DATABASE_URL`, dans PostgreSQL.
 Définir `SESSION_SECRET` (chaîne aléatoire) en production. Tests : `npm test`.
 
+Administration : les comptes dont l'e-mail figure dans `ADMIN_EMAILS` (liste séparée par des virgules)
+deviennent administrateurs à leur prochaine connexion ; l'interface est sur `/admin`.
+Données de démonstration (comptes fictifs `@demo.parkcraft.fr`, société suffixée « (démo) ») :
+
+```bash
+npm run seed:demo
+```
+
+Ajouter `-- --reset` pour supprimer d'abord les comptes de démonstration existants.
+
 ## Fonctionnalités
 
 | Fonction | Détail |
@@ -49,7 +59,9 @@ Définir `SESSION_SECRET` (chaîne aléatoire) en production. Tests : `npm test`
 | Mon parc & saison | Stock de modules possédés (import .json / .csv « module ; quantité » ou parc affiché) ; « Agrandir le parc affiché » avec un budget (ex. +50 000 €) ; « Nouvelle composition avec mon stock ». |
 | Plan d'ancrage | Position GPS + azimut du large ; export GPX (GPS Garmin, traceurs, Navionics, OsmAnd), KML (Google Earth, téléphone), CSV et plan imprimable. Ancres numérotées dans l'ordre de pose (tournée en bateau). |
 | Mode Play | Baigneurs animés (parcours, pauses, trampolines, sauts, toboggans, nage, groupes d'amis), fréquentation 10–100 % de la capacité, caméra cinématique ou libre. |
-| Comptes | Connexion / inscription, « Mes parcs » enregistrés en ligne, import d'un parc existant. |
+| Comptes | Fenêtre de connexion à l'ouverture (ou « Continuer sans compte »), inscription avec société et téléphone, « Mes parcs » enregistrés en ligne, import d'un parc existant. |
+| Demande de devis | Bouton « Demander un devis » : le parc est enregistré dans le compte du client et transmis à l'équipe commerciale avec son message. |
+| Administration (`/admin`) | Tableau de bord d'activité (clients actifs, projets, parcours client, modules les plus utilisés), **À relancer** (clients engagés dont le projet n'a pas abouti, classés par priorité, avec les blocages probables et un message de relance pré-rédigé), comptes (fiche, notes, rôle, désactivation, chronologie d'activité), projets & devis (statut, édition dans l'outil, devis éditable et imprimable), réglages du catalogue (prix, capacité, ancrages, modules masqués). |
 | Modèles de parcs | Kids Lagoon, Family Beach, AquaTrack, SportsPark XL, Lake Resort. |
 | Exports | Devis PDF (impression), liste Excel (CSV), projet JSON, capture PNG, lien de partage (projet encodé dans l'URL). Sauvegarde automatique dans le navigateur. |
 

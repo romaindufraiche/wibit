@@ -199,6 +199,28 @@ export const MODULES: ModuleSpec[] = [
 
 export const MODULE_MAP: Record<string, ModuleSpec> = Object.fromEntries(MODULES.map((s) => [s.id, s]));
 
+/** Valeurs d'origine (avant réglages administrateur). */
+export const DEFAULTS: Record<string, { price: number; cap: number; anchors: number }> = Object.fromEntries(MODULES.map((s) => [s.id, { price: s.price, cap: s.cap, anchors: s.anchors }]));
+
+export interface CatalogOverride {
+  price?: number;
+  cap?: number;
+  anchors?: number;
+  disabled?: boolean;
+}
+
+/** Applique les réglages du catalogue définis dans l'administration (prix, capacité, ancrages, masquage). */
+export function applyOverrides(overrides: Record<string, CatalogOverride>) {
+  for (const s of MODULES) {
+    const o = overrides[s.id] ?? {};
+    const d = DEFAULTS[s.id];
+    s.price = o.price ?? d.price;
+    s.cap = o.cap ?? d.cap;
+    s.anchors = o.anchors ?? d.anchors;
+    s.disabled = !!o.disabled;
+  }
+}
+
 export function spec(id: string): ModuleSpec {
   const s = MODULE_MAP[id];
   if (!s) throw new Error(`Module inconnu : ${id}`);

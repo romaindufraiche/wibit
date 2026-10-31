@@ -1449,3 +1449,138 @@ body.playing::after {
     display: none;
   }
 }
+
+/* fenêtre de connexion */
+.dialog-auth {
+  width: min(820px, 96vw);
+}
+.auth {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+}
+.auth-side {
+  background: var(--navy);
+  color: #fff;
+  padding: 28px 26px;
+  border-right: 4px solid var(--lime);
+}
+.auth-logo {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  background: var(--lime);
+  color: var(--navy);
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+.auth-logo svg {
+  width: 34px;
+  height: 34px;
+}
+.auth-side h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 800;
+}
+.auth-side p {
+  margin: 0 0 18px;
+  color: #c5d6e6;
+}
+.auth-side ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-weight: 600;
+}
+.auth-side li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.auth-side li .ico {
+  color: var(--lime);
+}
+.auth-form {
+  padding: 22px 26px 22px;
+  display: flex;
+  flex-direction: column;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+.auth-tabs button {
+  padding: 8px 2px;
+  margin-right: 20px;
+  font-weight: 800;
+  color: var(--muted);
+  border-bottom: 3px solid transparent;
+}
+.auth-tabs button.on {
+  color: var(--navy);
+  border-bottom-color: var(--lime);
+}
+.auth-submit {
+  margin-top: 18px;
+  height: 42px;
+  font-size: 15px;
+}
+.auth-skip {
+  margin-top: 12px;
+  align-self: center;
+  font-weight: 700;
+}
+.field textarea {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: 500 14px var(--ui);
+  resize: vertical;
+}
+.field textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+.hud-cta {
+  padding: 0 16px 4px;
+}
+.hud-cta .btn {
+  width: 100%;
+  height: 40px;
+}
+.quote-sum {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.quote-sum div {
+  padding: 10px 14px;
+  border-right: 1px solid var(--line-soft);
+}
+.quote-sum div:last-child {
+  border-right: 0;
+}
+.quote-sum b {
+  display: block;
+  font: 700 17px Inter, sans-serif;
+  color: var(--navy);
+}
+.quote-sum span {
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+  .auth-side {
+    display: none;
+  }
+}

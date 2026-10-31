@@ -1,7 +1,7 @@
 import type { Project } from '../core/types';
 import { parseProject } from '../io/export';
 import { esc, h } from './panels';
-import { icon } from './icons';
+import { LOGO, icon } from './icons';
 
 /*
  * Compte utilisateur : connexion / inscription et « Mes parcs » enregistrés sur le serveur.
@@ -15,6 +15,19 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  company?: string;
+  phone?: string;
+  role?: 'user' | 'admin';
+}
+
+/** Résumé chiffré du projet envoyé avec chaque enregistrement (tableau de bord administrateur). */
+export interface ProjectStats {
+  modules: number;
+  capacity: number;
+  total: number;
+  errors: number;
+  warnings: number;
+  types: Record<string, number>;
 }
 export interface ParkSummary {
   id: number;
@@ -55,6 +68,22 @@ export const account = {
     return !!this.token && !!this.user;
   },
 
+  get isAdmin() {
+    return this.user?.role === 'admin';
+  },
+
+  /** Revalide le jeton et rafraîchit le profil (rôle…). */
+  async refresh() {
+    if (!this.token) return;
+    try {
+      const r = await this.call<{ user: User }>('GET', '/me');
+      this.user = r.user;
+      write(USER_KEY, JSON.stringify(r.user));
+    } catch {
+      /* jeton expiré : déjà déconnecté par call() */
+    }
+  },
+
   async call<T>(method: string, path: string, body?: unknown): Promise<T> {
     const res = await fetch(`/api${path}`, {
       method,
@@ -72,8 +101,8 @@ export const account = {
     return data as T;
   },
 
-  async auth(mode: 'login' | 'register', email: string, password: string, name?: string) {
-    const r = await this.call<{ token: string; user: User }>('POST', `/auth/${mode}`, { email, password, name });
+  async auth(mode: 'login' | 'register', email: string, password: string, extra: { name?: string; company?: string; phone?: string } = {}) {
+    const r = await this.call<{ token: string; user: User }>('POST', `/auth/${mode}`, { email, password, ...extra });
     this.token = r.token;
     this.user = r.user;
     write(TOKEN_KEY, r.token);
@@ -92,46 +121,75 @@ export const account = {
   load: (id: number) => account.call<{ park: { id: number; project: Project } }>('GET', `/parks/${id}`).then((r) => r.park),
   remove: (id: number) => account.call('DELETE', `/parks/${id}`),
 
-  async save(project: Project, asNew = false): Promise<number> {
+  async save(project: Project, asNew = false, stats?: ProjectStats): Promise<number> {
     const id = asNew ? null : this.currentParkId;
-    const r = id ? await this.call<{ park: { id: number } }>('PUT', `/parks/${id}`, { project }) : await this.call<{ park: { id: number } }>('POST', '/parks', { project });
+    const r = id ? await this.call<{ park: { id: number } }>('PUT', `/parks/${id}`, { project, stats }) : await this.call<{ park: { id: number } }>('POST', '/parks', { project, stats });
     this.currentParkId = r.park.id;
     return r.park.id;
   },
+
+  quoteRequest: (id: number, message: string) => account.call('POST', `/parks/${id}/quote-request`, { message }),
 };
 
-/** Boîte de dialogue connexion / création de compte. */
-export function openAuthDialog(onDone: () => void) {
-  const dlg = document.getElementById('start-dialog') as HTMLDialogElement;
+/**
+ * Fenêtre de connexion / création de compte. En mode « accueil » (à l'ouverture de l'outil),
+ * elle propose aussi de continuer sans compte.
+ */
+export function openAuthDialog(onDone: () => void, opts: { welcome?: boolean; onSkip?: () => void; reason?: string } = {}) {
+  const dlg = document.getElementById('auth-dialog') as HTMLDialogElement;
   let mode: 'login' | 'register' = 'login';
   const draw = (err = '') => {
     dlg.innerHTML = `
-      <div class="dlg-head"><h2>${mode === 'login' ? 'Connexion' : 'Créer un compte'}</h2><p>Enregistrez vos parcs, retrouvez-les sur tous vos appareils et importez vos parcs existants.</p></div>
-      <form class="dlg-body" method="dialog">
-        <div class="fields" style="grid-template-columns:1fr">
-          ${mode === 'register' ? '<label class="field">Nom<input name="name" autocomplete="name"></label>' : ''}
-          <label class="field">E-mail<input name="email" type="email" required autocomplete="email"></label>
-          <label class="field">Mot de passe<input name="password" type="password" required minlength="8" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}"></label>
-        </div>
-        ${err ? `<div class="form-error">${esc(err)}</div>` : ''}
-        <div class="dlg-foot" style="padding:16px 0 0">
-          <button type="button" class="btn link-btn" data-a="switch">${mode === 'login' ? 'Pas encore de compte ? Créer un compte' : 'Déjà un compte ? Se connecter'}</button>
-          <span class="spacer"></span>
-          <button type="button" class="btn" data-a="cancel">Annuler</button>
-          <button type="submit" class="btn primary">${mode === 'login' ? 'Se connecter' : 'Créer le compte'}</button>
-        </div>
-      </form>`;
-    dlg.querySelector<HTMLElement>('[data-a=switch]')!.onclick = () => {
-      mode = mode === 'login' ? 'register' : 'login';
-      draw();
-    };
-    dlg.querySelector<HTMLElement>('[data-a=cancel]')!.onclick = () => dlg.close();
+      <div class="auth">
+        <aside class="auth-side">
+          <div class="auth-logo">${LOGO}</div>
+          <h2>${opts.welcome ? 'Bienvenue' : mode === 'login' ? 'Connexion' : 'Créer un compte'}</h2>
+          <p>${esc(opts.reason ?? 'Concevez votre parc aquatique en 3D, obtenez un devis et retrouvez vos projets sur tous vos appareils.')}</p>
+          <ul>
+            <li>${icon('check', 16)} Projets enregistrés en ligne</li>
+            <li>${icon('check', 16)} Devis personnalisé par nos équipes</li>
+            <li>${icon('check', 16)} Plan d'ancrage GPS, mode Play</li>
+          </ul>
+        </aside>
+        <form class="auth-form" method="dialog">
+          <div class="auth-tabs">
+            <button type="button" data-m="login" class="${mode === 'login' ? 'on' : ''}">Se connecter</button>
+            <button type="button" data-m="register" class="${mode === 'register' ? 'on' : ''}">Créer un compte</button>
+          </div>
+          <div class="fields" style="grid-template-columns:1fr 1fr">
+            ${
+              mode === 'register'
+                ? `<label class="field">Nom<input name="name" autocomplete="name" required></label>
+                   <label class="field">Société / site<input name="company" autocomplete="organization" placeholder="Base nautique, camping…"></label>
+                   <label class="field full">Téléphone<input name="phone" type="tel" autocomplete="tel"></label>`
+                : ''
+            }
+            <label class="field full">E-mail<input name="email" type="email" required autocomplete="email"></label>
+            <label class="field full">Mot de passe<input name="password" type="password" required minlength="8" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}"></label>
+          </div>
+          ${err ? `<div class="form-error">${esc(err)}</div>` : ''}
+          <button type="submit" class="btn primary auth-submit">${mode === 'login' ? 'Se connecter' : 'Créer mon compte'}</button>
+          ${opts.welcome ? '<button type="button" class="link-btn auth-skip" data-a="skip">Continuer sans compte</button>' : '<button type="button" class="link-btn auth-skip" data-a="cancel">Annuler</button>'}
+        </form>
+      </div>`;
+    dlg.querySelectorAll<HTMLElement>('[data-m]').forEach((b) => {
+      b.onclick = () => {
+        mode = b.dataset.m as 'login' | 'register';
+        draw();
+      };
+    });
+    dlg.querySelector<HTMLElement>('[data-a=cancel]')?.addEventListener('click', () => dlg.close());
+    dlg.querySelector<HTMLElement>('[data-a=skip]')?.addEventListener('click', () => {
+      dlg.close();
+      opts.onSkip?.();
+    });
     const form = dlg.querySelector('form')!;
     form.onsubmit = async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
+      const v = (k: string) => String(fd.get(k) ?? '');
       try {
-        await account.auth(mode, String(fd.get('email')), String(fd.get('password')), String(fd.get('name') ?? ''));
+        await account.auth(mode, v('email'), v('password'), { name: v('name'), company: v('company'), phone: v('phone') });
         dlg.close();
         onDone();
       } catch (er) {
@@ -146,6 +204,7 @@ export function openAuthDialog(onDone: () => void) {
 
 export interface ParksHost {
   current: () => Project;
+  stats: () => ProjectStats;
   open: (p: Project) => void;
   toast: (m: string) => void;
   login: () => void;
@@ -167,7 +226,7 @@ export function parksFlyout(host: ParksHost, rerender: () => void): HTMLElement 
       <button class="btn" data-a="import">Importer un parc…</button>
     </div>
     <div class="park-list"><div class="empty">Chargement…</div></div>
-    <div class="btn-row"><button class="btn" data-a="logout">Se déconnecter</button></div>
+    <div class="btn-row">${account.isAdmin ? '<a class="btn" href="/admin">Administration</a>' : ''}<button class="btn" data-a="logout">Se déconnecter</button></div>
   </div>`);
   const list = el.querySelector<HTMLElement>('.park-list')!;
   el.querySelector<HTMLElement>('[data-a=logout]')!.onclick = () => {
@@ -177,7 +236,7 @@ export function parksFlyout(host: ParksHost, rerender: () => void): HTMLElement 
   };
   el.querySelector<HTMLElement>('[data-a=save]')!.onclick = async () => {
     try {
-      await account.save(host.current());
+      await account.save(host.current(), false, host.stats());
       host.toast('Parc enregistré dans votre compte');
       rerender();
     } catch (e) {

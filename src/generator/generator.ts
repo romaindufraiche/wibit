@@ -105,7 +105,7 @@ export class Builder {
   ) {
     const lim = AUDIENCE_LIMITS[p.audience];
     this.outline = siteOutline(site);
-    this.allowed = MODULES.filter((s) => s.depth <= site.depth && (s.role === 'watch' || (s.H <= lim.maxH && s.diff <= lim.maxDiff)));
+    this.allowed = MODULES.filter((s) => !s.disabled && s.depth <= site.depth && (s.role === 'watch' || (s.H <= lim.maxH && s.diff <= lim.maxDiff)));
     this.targetDiff = Math.min(lim.maxDiff, 1 + (p.intensity - 1) * 0.9);
     this.maxRun = p.intensity >= 4 ? 4 : 3;
     this.stockLeft = new Map(Object.entries(p.stock ?? {}));

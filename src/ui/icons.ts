@@ -41,6 +41,14 @@ const P: Record<string, string> = {
   user: `<circle cx="12" cy="8" r="4" ${F}/><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>`,
   cloud: `<path d="M7 19a4.5 4.5 0 01-.6-9A6 6 0 0118 9a4.5 4.5 0 01-1 10z" ${F}/><path d="M7 19a4.5 4.5 0 01-.6-9A6 6 0 0118 9a4.5 4.5 0 01-1 10z"/><path d="M12 16v-5M9.5 13.5L12 11l2.5 2.5"/>`,
   camera: '<rect x="2" y="6" width="14" height="12" rx="1"/><path d="M16 10l6-3.5v11L16 14z"/>',
+  chart: `<path d="M3 21h18"/><rect x="5" y="11" width="3" height="8" ${S}/><rect x="10.5" y="6" width="3" height="13"/><rect x="16" y="13" width="3" height="6" ${S}/>`,
+  mail: `<rect x="3" y="5" width="18" height="14" rx="1" ${F}/><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3.5 6l8.5 7 8.5-7"/>`,
+  phone: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 006 6L16 13l5 2v4a2 2 0 01-2 2A16 16 0 013 5a2 2 0 012-2z"/>',
+  users: `<circle cx="9" cy="8" r="3.5" ${F}/><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.5 3.5 0 010 6.4M18.5 14.8c1.7.8 2.8 2.5 3 5.2"/>`,
+  bell: `<path d="M6 16V11a6 6 0 0112 0v5l2 2H4z" ${F}/><path d="M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4"/>`,
+  external: '<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>',
+  euro: '<path d="M17.5 6.5A7 7 0 007 12a7 7 0 0010.5 5.5M4 10h9M4 14h9"/>',
+  logout: '<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/>',
   table: `<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18" /><rect x="3" y="4" width="18" height="5" ${F}/><path d="M3 14.5h18M9 9v11"/>`,
 };
 

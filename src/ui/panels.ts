@@ -54,7 +54,7 @@ export function initCatalog(store: Store, onAdd: (type: string) => void, onVisib
 
   const draw = () => {
     const q = search.value.trim().toLowerCase();
-    const list = MODULES.filter((s) => !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q)).filter((s) => !fit.checked || fits(s));
+    const list = MODULES.filter((s) => !s.disabled).filter((s) => !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q)).filter((s) => !fit.checked || fits(s));
     tabs.innerHTML = '';
     const cats: (Category | 'all')[] = ['all', ...(Object.keys(CATEGORY_LABELS) as Category[])];
     for (const c of cats) {
@@ -149,7 +149,7 @@ let rulesOpen = false;
 let detailsOpen = false;
 let hudCollapsed = false;
 
-export function renderHud(store: Store, onPick: (uids: string[]) => void) {
+export function renderHud(store: Store, onPick: (uids: string[]) => void, onQuote: () => void = () => {}) {
   const el = document.getElementById('hud')!;
   const st = store.derived.stats;
   const issues = store.derived.issues;
@@ -162,7 +162,7 @@ export function renderHud(store: Store, onPick: (uids: string[]) => void) {
     el.innerHTML = `<button class="hud-pill" title="Déplier le tableau de bord"><span class="dot ${lvl}"></span><b>${eur(st.total)}</b><span>${st.capacity} pers.</span>${icon('chevron', 16)}</button>`;
     el.querySelector<HTMLElement>('.hud-pill')!.onclick = () => {
       hudCollapsed = false;
-      renderHud(store, onPick);
+      renderHud(store, onPick, onQuote);
     };
     return;
   }
@@ -184,10 +184,15 @@ export function renderHud(store: Store, onPick: (uids: string[]) => void) {
     }
     el.appendChild(list);
   }
+  if (st.modules) {
+    const q = h(`<div class="hud-cta"><button class="btn primary">Demander un devis</button></div>`);
+    q.querySelector('button')!.onclick = onQuote;
+    el.appendChild(q);
+  }
   const det = h(`<button class="link">${detailsOpen ? 'Masquer le détail' : 'Détail du devis'}</button>`);
   det.onclick = () => {
     detailsOpen = !detailsOpen;
-    renderHud(store, onPick);
+    renderHud(store, onPick, onQuote);
   };
   el.appendChild(det);
   if (detailsOpen) {
@@ -203,11 +208,11 @@ export function renderHud(store: Store, onPick: (uids: string[]) => void) {
   }
   el.querySelector<HTMLElement>('.hud-fold')!.onclick = () => {
     hudCollapsed = true;
-    renderHud(store, onPick);
+    renderHud(store, onPick, onQuote);
   };
   el.querySelector<HTMLElement>('[data-a=rules]')!.onclick = () => {
     rulesOpen = !rulesOpen;
-    renderHud(store, onPick);
+    renderHud(store, onPick, onQuote);
   };
 }
 

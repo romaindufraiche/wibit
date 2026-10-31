@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "start": "node server/index.js",
-    "dev:api": "PORT=3001 node server/index.js"
+    "dev:api": "PORT=3001 node server/index.js",
+    "seed:demo": "vite-node scripts/seed-demo.ts"
   },
   "dependencies": {
     "pg": "^8.13.1",

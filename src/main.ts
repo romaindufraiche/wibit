@@ -16,7 +16,9 @@ import { LOGO, icon } from './ui/icons';
 import { exportAnchors, printAnchorPlan } from './io/anchorplan';
 import { eur } from './io/export';
 import { seasonFlyout } from './ui/season';
-import { account, openAuthDialog, parksFlyout } from './ui/account';
+import { account, openAuthDialog, parksFlyout, type ProjectStats } from './ui/account';
+import { initTracking, track } from './io/track';
+import { applyOverrides } from './catalog/modules';
 import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
 
 const store = new Store();
@@ -30,6 +32,22 @@ function startPlay() {
   catalog.close();
   closeFlyout();
   if (!play.start()) toast('Construisez ou générez d’abord un parc.');
+  else track('play');
+}
+
+/** Résumé chiffré envoyé avec chaque enregistrement (suivi commercial). */
+function projectStats(): ProjectStats {
+  const { stats, issues } = store.derived;
+  const types: Record<string, number> = {};
+  for (const m of store.project.modules) types[m.type] = (types[m.type] ?? 0) + 1;
+  return {
+    modules: stats.modules,
+    capacity: stats.capacity,
+    total: stats.total,
+    errors: issues.filter((i) => i.level === 'error').length,
+    warnings: issues.filter((i) => i.level === 'warning').length,
+    types,
+  };
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -145,6 +163,7 @@ function runGenerator(params: GenParams, opts: { site?: Project['site']; name?: 
   }
   store.setProject({ ...store.project, name: opts.name ?? `Parc ${params.seed}`, site, audience: params.audience, modules: res.modules });
   viewport.frameAll();
+  track(opts.name ? 'template' : 'generate', { seed: params.seed, capacity: params.capacity, budget: params.budget ?? 0, modules: res.modules.length });
   const st = store.derived.stats;
   toast(`${st.modules} modules · ${st.capacity} personnes · ${eur(st.total)}${st.loops ? ' · boucle' : ''} — variante « ${params.seed} »`);
 }
@@ -272,6 +291,7 @@ function setTool(t: Tool) {
   shoreBar?.remove();
   shoreBar = null;
   if (t === 'shore') {
+    track('shore_edit');
     catalog.close();
     closeFlyout();
     store.select([]);
@@ -314,6 +334,7 @@ function openFlyout(name: string) {
         parksFlyout(
           {
             current: () => store.project,
+            stats: projectStats,
             open: (p) => {
               store.setProject(p);
               viewport.frameAll();
@@ -496,6 +517,7 @@ exportMenu.innerHTML = [
 
 /** Le plan d'ancrage exige la position GPS du plan d'eau. */
 function withGeo(fn: (geo: NonNullable<Project['site']['geo']>) => void) {
+  track('export_anchors');
   if (!store.project.modules.length) return toast('Aucun module : rien à ancrer.');
   const geo = store.project.site.geo;
   if (!geo) {
@@ -508,6 +530,46 @@ function withGeo(fn: (geo: NonNullable<Project['site']['geo']>) => void) {
 const nameInput = $<HTMLInputElement>('#project-name');
 nameInput.onchange = () => store.update((p) => (p.name = nameInput.value || 'Parc sans nom'));
 
+// ------------------------------------------------ demande de devis
+
+/** Le client demande un devis : le parc est enregistré dans son compte puis transmis à l'équipe commerciale. */
+function requestQuote() {
+  if (!store.project.modules.length) return toast('Construisez d’abord votre parc.');
+  if (!account.loggedIn) {
+    openAuthDialog(
+      () => {
+        refreshUserBtn();
+        requestQuote();
+      },
+      { reason: 'Créez votre compte pour recevoir votre devis personnalisé : nos équipes reprennent votre projet et vous recontactent.' },
+    );
+    return;
+  }
+  const dlg = $<HTMLDialogElement>('#quote-dialog');
+  const st = store.derived.stats;
+  const errors = store.derived.issues.filter((i) => i.level === 'error').length;
+  dlg.innerHTML = `
+    <div class="dlg-head"><h2>Demander un devis</h2><p>Nos équipes reprennent « ${esc(store.project.name)} », vérifient l'implantation et vous envoient un devis personnalisé.</p></div>
+    <div class="dlg-body">
+      <div class="quote-sum"><div><b>${st.modules}</b><span>modules</span></div><div><b>${st.capacity}</b><span>personnes</span></div><div><b>${eur(st.total)}</b><span>estimation HT</span></div></div>
+      ${errors ? `<div class="form-error">${errors} point${errors > 1 ? 's' : ''} de règles à corriger : nos équipes vous aideront à les résoudre.</div>` : ''}
+      <label class="field" style="margin-top:14px">Votre message (dates, contraintes du site, questions…)<textarea rows="4" data-k="msg" placeholder="Ouverture souhaitée en juin, accès camion par le parking nord…"></textarea></label>
+    </div>
+    <div class="dlg-foot"><button class="btn" data-a="cancel">Annuler</button><button class="btn primary" data-a="send">Envoyer la demande</button></div>`;
+  dlg.querySelector<HTMLElement>('[data-a=cancel]')!.onclick = () => dlg.close();
+  dlg.querySelector<HTMLElement>('[data-a=send]')!.onclick = async () => {
+    try {
+      const id = await account.save(store.project, false, projectStats());
+      await account.quoteRequest(id, dlg.querySelector<HTMLTextAreaElement>('[data-k=msg]')!.value);
+      dlg.close();
+      toast('Demande envoyée : nous revenons vers vous très vite.');
+    } catch (e) {
+      toast(`Envoi impossible : ${(e as Error).message}`);
+    }
+  };
+  dlg.showModal();
+}
+
 // ------------------------------------------------ rafraîchissement
 
 let saveTimer = 0;
@@ -515,10 +577,14 @@ let lastAudience = store.project.audience;
 function refreshUI() {
   if (document.activeElement !== nameInput) nameInput.value = store.project.name;
   renderInspector(store, { rotate: rotateSelection, duplicate: duplicateSelection, remove: deleteSelection, focus: () => viewport.focusSelection() });
-  renderHud(store, (uids) => {
-    store.select(uids);
-    viewport.focusSelection();
-  });
+  renderHud(
+    store,
+    (uids) => {
+      store.select(uids);
+      viewport.focusSelection();
+    },
+    requestQuote,
+  );
   $<HTMLButtonElement>('[data-action=undo]').disabled = !store.canUndo();
   $<HTMLButtonElement>('[data-action=redo]').disabled = !store.canRedo();
   if (store.project.audience !== lastAudience) {
@@ -543,6 +609,7 @@ viewport.onStroke = (pts) => {
   const added = res.modules.map((m) => ({ ...m, uid: store.newUid() }));
   store.update((p) => p.modules.push(...added));
   store.select(added.map((m) => m.uid));
+  track('pen', { modules: added.length, length: Math.round(res.length) });
   const pct = Math.round(res.coverage * 100);
   toast(`${added.length} modules posés sur ${Math.round(res.length)} m${res.extended ? ', parc prolongé' : ''}${pct < 90 ? ` (${pct} % du tracé)` : ''} — Ctrl+Z pour annuler`);
 };
@@ -588,7 +655,7 @@ const actions: Record<string, (btn: HTMLElement) => void> = {
     autosave(store.project);
     if (account.loggedIn) {
       try {
-        await account.save(store.project);
+        await account.save(store.project, false, projectStats());
         toast('Parc enregistré dans votre compte');
         if (flyout === 'parks') (flyout = null), openFlyout('parks');
       } catch (e) {
@@ -607,9 +674,13 @@ const actions: Record<string, (btn: HTMLElement) => void> = {
     exportMenu.hidden = !exportMenu.hidden;
   },
   report: () => {
+    track('export_pdf', { total: store.derived.stats.total });
     if (!printReport(store.project, store.derived.stats, store.derived.issues, viewport.screenshot())) toast('Autorisez les fenêtres pop-up pour générer le devis PDF');
   },
-  csv: () => downloadCSV(store.project, store.derived.stats),
+  csv: () => {
+    track('export_csv');
+    downloadCSV(store.project, store.derived.stats);
+  },
   json: () => downloadJSON(store.project),
   png: () => downloadPNG(viewport.screenshot(), store.project.name),
   share: async () => {
@@ -687,14 +758,66 @@ window.addEventListener('keydown', (e) => {
 // ------------------------------------------------ démarrage
 
 refreshRail();
-const fromHash = projectFromHash(location.hash);
-const saved = fromHash ?? loadAutosave();
-if (saved) {
-  store.setProject(saved, false);
-  viewport.frameAll();
-  if (fromHash) toast(`Projet partagé « ${saved.name} » chargé`);
-} else {
-  refreshUI();
-  viewport.frameAll();
-  openStartDialog();
+initTracking();
+
+/** Ouverture normale : projet partagé, projet en cours, ou fenêtre « Nouveau parc ». */
+function openWorkspace() {
+  const fromHash = projectFromHash(location.hash);
+  const saved = fromHash ?? loadAutosave();
+  // un projet vide sauvegardé automatiquement ne remplace pas la fenêtre « Nouveau parc »
+  if (saved && (fromHash || saved.modules.length)) {
+    store.setProject(saved, false);
+    viewport.frameAll();
+    if (fromHash) toast(`Projet partagé « ${saved.name} » chargé`);
+  } else {
+    refreshUI();
+    viewport.frameAll();
+    openStartDialog();
+  }
 }
+
+/** Lien d'administration : /?park=ID ouvre un projet enregistré (le sien, ou n'importe lequel pour un administrateur). */
+async function openParkFromUrl(): Promise<boolean> {
+  const id = Number(new URLSearchParams(location.search).get('park'));
+  if (!id || !account.loggedIn) return false;
+  try {
+    const park = await account.load(id);
+    account.currentParkId = park.id;
+    store.setProject(park.project, false);
+    viewport.frameAll();
+    toast(`Projet « ${park.project.name} » ouvert${account.isAdmin ? ' (administration)' : ''} — Ctrl+S pour enregistrer`);
+    return true;
+  } catch (e) {
+    toast((e as Error).message);
+    return false;
+  }
+}
+
+// réglages du catalogue définis par l'administrateur (prix, capacités, modules masqués)
+fetch('/api/catalog')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((r) => {
+    if (r?.overrides) {
+      applyOverrides(r.overrides);
+      store.update(() => {}, false);
+      catalog.redraw();
+    }
+  })
+  .catch(() => {});
+
+refreshUI();
+(async () => {
+  await account.refresh();
+  refreshUserBtn();
+  if (await openParkFromUrl()) return;
+  if (account.loggedIn || location.hash.startsWith('#p=')) return openWorkspace();
+  // fenêtre de connexion à l'ouverture
+  openAuthDialog(
+    () => {
+      refreshUserBtn();
+      toast(`Connecté : ${account.user!.email}`);
+      openWorkspace();
+    },
+    { welcome: true, onSkip: openWorkspace },
+  );
+})();

@@ -74,6 +74,8 @@ export interface ModuleSpec {
   /** Turn à 90° utilisable dans une boucle InfinityLoop. */
   loopCorner?: boolean;
   desc: string;
+  /** Masqué par l'administrateur (catalogue). */
+  disabled?: boolean;
   model: ModelSpec;
   /** Affichage catalogue « L × l » si différent de L × W (modules orientés). */
   displaySize?: string;

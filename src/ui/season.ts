@@ -4,6 +4,7 @@ import type { Store } from '../editor/store';
 import { ACCESSORY_FACTOR, extendPark, generatePark, type GenParams } from '../generator/generator';
 import { eur } from '../io/export';
 import { esc, h } from './panels';
+import { track } from '../io/track';
 
 /*
  * « Mon parc & saison » : stock de modules possédés (parc existant), puis
@@ -156,6 +157,7 @@ export function seasonFlyout(host: SeasonHost, rerender: () => void): HTMLElemen
     const res = extendPark(store.project.site, store.project.modules, p);
     if (!res || !res.modules.length) return host.toast('Pas de place pour agrandir ce parc sur ce plan d’eau : agrandissez la zone ou baissez le budget.');
     host.apply([...store.project.modules, ...res.modules.map((m) => ({ ...m, uid: '' }))]);
+    track('season_extend', { budget, modules: res.modules.length });
     summarize(res.modules, res.spent, res.stockUsed);
     host.toast(`Agrandissement : ${res.modules.length} modules ajoutés (sélectionnés) — Ctrl+Z pour annuler`);
     rerender();
@@ -166,6 +168,7 @@ export function seasonFlyout(host: SeasonHost, rerender: () => void): HTMLElemen
     const res = generatePark(store.project.site, p);
     if (!res.modules.length) return host.toast('Impossible de composer un parc avec ce stock sur ce plan d’eau.');
     host.apply(res.modules, `${store.project.name} — recomposé`);
+    track('season_recompose', { budget, used: res.stockUsed ?? 0 });
     summarize(res.modules, res.spent ?? 0, res.stockUsed ?? 0);
     host.toast(`Nouvelle composition : ${res.stockUsed}/${total} modules du stock utilisés`);
     host.frame();
