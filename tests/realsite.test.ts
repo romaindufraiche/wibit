@@ -35,7 +35,7 @@ describe('site réel', () => {
   it('oriente la zone : plage sur la berge la plus proche, parcs dans l’eau', () => {
     // point dans le lac, à 40 m de la berge sud
     const point: LatLon = [C[0] + (-160 / M), C[1]];
-    const r = buildRealSite({ point, rings: [lake], length: 320, width: 200, depth: 3.5 })!;
+    const r = buildRealSite({ point, rings: [lake], zone: { length: 320, width: 200 }, depth: 3.5 })!;
     expect(r).not.toBeNull();
     // le large est vers le nord (berge sud -> intérieur du lac)
     const b = r.site.geo!.bearing;
@@ -45,6 +45,22 @@ describe('site réel', () => {
     expect(pointInPolygon(pl, r.site.outline!)).toBe(true);
     const g = generatePark(r.site, { ...DEFAULT_PARAMS, capacity: 80, seed: 'reel' });
     expect(g.modules.length).toBeGreaterThan(5);
+    const errs = validate({ version: 1, name: '', site: r.site, audience: 'mixed', modules: g.modules }).filter((i) => i.level === 'error');
+    expect(errs).toHaveLength(0);
+  });
+
+  it('reprend le plan d’eau entier : même espace aquatique que le vrai lac', () => {
+    const point: LatLon = [C[0] + (-150 / M), C[1]];
+    const r = buildRealSite({ point, rings: [lake], zone: 'all', depth: 3 })!;
+    expect(r.whole).toBe(true);
+    expect(r.extent).toBeGreaterThan(550);
+    // surface du contour ≈ surface de l'ellipse (π·300·200)
+    const o = r.site.outline!;
+    let area = 0;
+    for (let i = 0; i < o.length; i++) area += o[i].x * o[(i + 1) % o.length].z - o[(i + 1) % o.length].x * o[i].z;
+    expect(Math.abs(area / 2) / (Math.PI * 300 * 200)).toBeGreaterThan(0.97);
+    expect(r.site.shore).toEqual(r.site.outline);
+    const g = generatePark(r.site, { ...DEFAULT_PARAMS, capacity: 80, seed: 'lac-entier' });
     const errs = validate({ version: 1, name: '', site: r.site, audience: 'mixed', modules: g.modules }).filter((i) => i.level === 'error');
     expect(errs).toHaveLength(0);
   });

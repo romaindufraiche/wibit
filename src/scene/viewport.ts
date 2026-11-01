@@ -169,15 +169,11 @@ export class Viewport {
 
   private buildSite() {
     const { site } = this.store.project;
-    const key = JSON.stringify([site.length, site.width, site.depth, site.outline ?? null, site.imagery ? site.geo : null]);
+    const key = JSON.stringify([site.length, site.width, site.depth, site.outline ?? null, site.shore ?? null]);
     if (key === this.siteKey) return;
     this.siteKey = key;
     this.siteGroup.clear();
     const terrain = buildTerrain(site);
-    // site réel : eau plus transparente pour laisser voir la photo du fond du lac
-    const wm = this.water.material as THREE.MeshPhysicalMaterial;
-    wm.opacity = site.imagery ? 0.62 : 0.92;
-    wm.color.set(site.imagery ? 0x1e6688 : 0x1677a8);
     this.land = terrain.land;
     this.foam = terrain.foam;
     this.siteGroup.add(terrain.group);
@@ -257,7 +253,16 @@ export class Viewport {
 
   private setOutline(outline: { x: number; z: number }[], live: boolean) {
     const b = bounds(outline);
-    const apply = (p: Project) => (p.site = { ...p.site, outline, length: Math.round((b.maxX - b.minX) * 10) / 10, width: Math.round((b.maxZ - b.minZ) * 10) / 10 });
+    // site réel repris en entier : le décor (vraies berges) suit le remodelage
+    const sameShore = (p: Project) => {
+      const sh = p.site.shore,
+        o = p.site.outline;
+      return !!sh && !!o && sh.length === o.length && sh[0].x === o[0].x && sh[0].z === o[0].z;
+    };
+    const apply = (p: Project) => {
+      const shore = sameShore(p) ? outline : p.site.shore;
+      p.site = { ...p.site, outline, shore, length: Math.round((b.maxX - b.minX) * 10) / 10, width: Math.round((b.maxZ - b.minZ) * 10) / 10 };
+    };
     if (live) this.store.live(apply);
     else this.store.update(apply);
   }

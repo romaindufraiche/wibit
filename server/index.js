@@ -7,7 +7,7 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileStore, pgStore } from './store.js';
 import { overview, userInsights } from './insights.js';
-import { satelliteTile, searchPlaces, waterAround } from './geo.js';
+import { searchPlaces, waterAround } from './geo.js';
 
 const scrypt = promisify(scryptCb);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -133,14 +133,6 @@ async function api(store, req, res, path) {
       const radius = Math.max(100, Math.min(3000, Number(url.searchParams.get('r')) || 800));
       if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180) return send(res, 400, { error: 'Coordonnées invalides.' });
       return send(res, 200, { water: await waterAround(lat, lon, radius) });
-    }
-    const t = path.match(/^\/api\/geo\/tile\/(\d{1,2})\/(\d+)\/(\d+)$/);
-    if (t) {
-      const [z, x, y] = t.slice(1).map(Number);
-      if (z < 3 || z > 19 || x >= 2 ** z || y >= 2 ** z) return send(res, 400, { error: 'Tuile invalide.' });
-      const tile = await satelliteTile(z, x, y);
-      res.writeHead(200, { 'content-type': tile.type, 'cache-control': 'public, max-age=604800' });
-      return res.end(tile.buf);
     }
   }
 

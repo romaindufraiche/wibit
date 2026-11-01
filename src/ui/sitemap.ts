@@ -21,6 +21,7 @@ interface SearchResult {
 }
 
 const ZONES: Record<string, [number, number, string]> = {
+  all: [0, 0, 'Tout le plan d’eau (jusqu’à 1,5 km)'],
   s: [200, 140, 'Compacte · 200 × 140 m'],
   m: [320, 200, 'Standard · 320 × 200 m'],
   l: [500, 320, 'Large · 500 × 320 m'],
@@ -42,12 +43,12 @@ export function openSiteMap(host: SiteMapHost) {
         <div class="search-wrap"><span>${icon('search', 16)}</span><input data-k="q" placeholder="Ex. Lac de Serre-Ponçon, Annecy…" spellcheck="false"></div>
         <div class="map-results"></div>
         <div class="map-step"><b>2</b><span>Cliquez sur l'eau, à l'endroit du futur parc (le point se déplace à la souris).</span></div>
-        <div class="map-step"><b>3</b><span>Le contour du plan d'eau est détecté automatiquement. Sinon, dessinez-le.</span></div>
+        <div class="map-step"><b>3</b><span>Le contour du plan d'eau est détecté automatiquement (sinon, dessinez-le). Ses berges sont reprises dans la 3D, avec le décor habituel.</span></div>
         <div class="map-status muted">Aucun point posé.</div>
         <div class="btn-row"><button class="btn" data-a="draw">${icon('pen', 15)} Dessiner le contour de l'eau</button></div>
         <div class="fields" style="margin-top:14px">
           <label class="field full">Zone de travail<select data-k="zone">${Object.entries(ZONES)
-            .map(([k, v]) => `<option value="${k}" ${k === 'm' ? 'selected' : ''}>${v[2]}</option>`)
+            .map(([k, v]) => `<option value="${k}" ${k === 'all' ? 'selected' : ''}>${v[2]}</option>`)
             .join('')}</select></label>
           <label class="field">Profondeur (m)<input type="number" min="0.8" max="15" step="0.1" data-k="depth" value="${host.current.depth}"></label>
         </div>
@@ -87,8 +88,9 @@ export function openSiteMap(host: SiteMapHost) {
     if (!point) return;
     const all = drawn.length >= 3 ? [[...drawn, drawn[0]]] : [...searchRings, ...rings];
     if (!all.length) return;
+    const key = $<HTMLSelectElement>('[data-k=zone]').value;
     const [len, wid] = zoneSize();
-    result = buildRealSite({ point, rings: all, length: len, width: wid, depth: Number($<HTMLInputElement>('[data-k=depth]').value) || 3 });
+    result = buildRealSite({ point, rings: all, zone: key === 'all' ? 'all' : { length: len, width: wid }, depth: Number($<HTMLInputElement>('[data-k=depth]').value) || 3 });
     if (!result) {
       status('Le plan d\'eau détecté ne recouvre pas la zone : déplacez le point ou dessinez le contour.');
       return;
@@ -99,7 +101,12 @@ export function openSiteMap(host: SiteMapHost) {
     // côté plage de la zone (bas de la scène 3D)
     L.polyline([result.zone[2], result.zone[3]], { color: '#c8d400', weight: 5 }).addTo(layer);
     $<HTMLButtonElement>('[data-a=apply]').disabled = false;
-    status(`Plan d'eau trouvé. Zone de travail en pointillés jaunes, <b>trait plein = côté plage</b> (en bas dans la scène 3D). Azimut du large : ${Math.round(result.site.geo!.bearing)}°.`);
+    const size = `${Math.round(result.extent)} m`;
+    status(
+      result.whole
+        ? `Plan d'eau de ${size} repris en entier : ses berges deviennent celles du projet. <b>Trait plein = côté plage</b> (en bas dans la scène 3D).`
+        : `Plan d'eau de ${size}${key === 'all' ? ' : trop grand pour être repris en entier, zone de 500 × 320 m' : ''}. Zone de travail en pointillés, <b>trait plein = côté plage</b>. Les vraies berges autour restent visibles en 3D.`,
+    );
   };
 
   const detect = async () => {

@@ -1,10 +1,9 @@
 // Données géographiques pour « mon site réel » : recherche d'adresse (Nominatim), contours de plans
-// d'eau (Overpass / OpenStreetMap) et tuiles d'imagerie satellite relayées (texture du terrain 3D).
+// d'eau (Overpass / OpenStreetMap).
 // Tout est mis en cache en mémoire pour ménager les services publics.
 
 const UA = 'Parkcraft/0.1 (configurateur de parcs aquatiques; https://wibit-create.onrender.com)';
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
-const TILE_URL = (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
 
 class Lru {
   constructor(max) {
@@ -26,7 +25,6 @@ class Lru {
 }
 const searchCache = new Lru(300);
 const waterCache = new Lru(200);
-const tileCache = new Lru(800);
 
 async function fetchWithTimeout(url, opts = {}, ms = 20000) {
   const ctl = new AbortController();
@@ -141,17 +139,4 @@ export function parseOverpassWater(data) {
     }
   }
   return out;
-}
-
-/** Tuile satellite relayée (même origine que l'outil : utilisable comme texture WebGL). */
-export async function satelliteTile(z, x, y) {
-  const key = `${z}/${x}/${y}`;
-  const hit = tileCache.get(key);
-  if (hit) return hit;
-  const r = await fetchWithTimeout(TILE_URL(z, x, y), {}, 15000);
-  if (!r.ok) throw Object.assign(new Error('Tuile indisponible'), { status: 502 });
-  const buf = Buffer.from(await r.arrayBuffer());
-  const tile = { type: r.headers.get('content-type') ?? 'image/jpeg', buf };
-  tileCache.set(key, tile);
-  return tile;
 }
