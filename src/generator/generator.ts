@@ -39,6 +39,11 @@ export interface GenParams {
   budget?: number;
   /** Stock de modules déjà possédés (id -> quantité) : utilisés en priorité, sans coût. */
   stock?: Record<string, number>;
+  /**
+   * Parcours chronométré : un long parcours d'un seul tenant, du portique de départ à l'arrivée
+   * (toboggan), peu de branches, pas de boucle — pour les challenges et les courses.
+   */
+  course?: boolean;
 }
 
 /** Les produits à prévoir (ancrages, bouées, gilets…) représentent ~15 % du prix des modules. */
@@ -330,6 +335,8 @@ export class Builder {
       const isTurn = s.ports.length === 2 && s.ports[0].dx * s.ports[1].dx + s.ports[0].dz * s.ports[1].dz > -0.5;
       if (clearance < 12 && (isTurn || s.ports.length > 2)) w *= 4;
       if (s.id === 'junction' || s.id === 't-connect-sus') w = Math.max(w, 0.8);
+      // parcours chronométré : virages plutôt que jonctions (pas d'embranchements)
+      if (this.p.course) w *= s.ports.length > 2 ? 0.15 : 2;
       if (prev && prev.H >= 2.4 && s.H >= 2.4) continue;
       if (s.diff > this.targetDiff + 1.5) w *= 0.3;
       out.push({ item: s.id, w: w * this.stockBoost(s.id) });
@@ -658,6 +665,24 @@ function attempt(site: Site, p: GenParams, rng: Rng): Builder {
   if (!entry) return b;
   let cur: OpenPort | null = entry;
 
+  if (p.course) {
+    // un seul long parcours (≈ 85 % de la capacité), puis quelques branches seulement si nécessaire
+    b.growTrail(cur, 70, p.capacity * 0.85);
+    b.placeWatch(p.capacity);
+    b.placeAccesses(p.capacity);
+    let guard = 0;
+    while (b.cap < p.capacity * 0.75 && !b.exhausted() && guard++ < 12) {
+      const pool = b.free.filter((f) => b.clearance(f) > 6);
+      if (!pool.length) break;
+      b.growTrail(rng.pick(pool), rng.int(2, 5), p.capacity);
+    }
+    b.closeDeadEnds();
+    b.placeAccesses();
+    b.placeWatch();
+    if (p.standalones) b.placeStandalones();
+    return b;
+  }
+
   // 1 à 2 obstacles d'échauffement après l'accès
   if (p.loop && b.cap < p.capacity) {
     const warm = rng.int(0, 1);
@@ -715,9 +740,32 @@ export function scorePark(project: Project, target: GenParams): number {
   let s = errors * 1000 + warnings * 25;
   s += (Math.abs(stats.capacity - target.capacity) / target.capacity) * 150;
   s -= variety * 3;
-  if (target.loop && stats.loops === 0) s += 60;
+  if (target.loop && !target.course && stats.loops === 0) s += 60;
+  if (target.course) s -= longestRun(project.modules) * 2; // parcours le plus long possible
   if (target.bigSlide && !project.modules.some((m) => BIG_SLIDES.slice(0, 3).includes(m.type))) s += 40;
   return s;
+}
+
+/** Nombre de modules du plus long chemin simple du parc (approximation : double parcours en largeur). */
+export function longestRun(modules: Placed[]): number {
+  const adj = buildGraph(modules).adj;
+  const far = (from: string): [string, number] => {
+    const dist = new Map<string, number>([[from, 1]]);
+    const q = [from];
+    let best: [string, number] = [from, 1];
+    while (q.length) {
+      const u = q.shift()!;
+      for (const v of adj.get(u) ?? []) {
+        if (dist.has(v)) continue;
+        dist.set(v, dist.get(u)! + 1);
+        if (dist.get(v)! > best[1]) best = [v, dist.get(v)!];
+        q.push(v);
+      }
+    }
+    return best;
+  };
+  if (!modules.length) return 0;
+  return far(far(modules[0].uid)[0])[1];
 }
 
 /** Pénalités liées au budget et au stock (stock non utilisé, dépassement). */

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { fileStore, pgStore } from './store.js';
 import { overview, userInsights } from './insights.js';
 import { searchPlaces, waterAround } from './geo.js';
+import { askAssistant, assistantEnabled } from './assistant.js';
 
 const scrypt = promisify(scryptCb);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,6 +42,7 @@ const EVENT_TYPES = new Set([
   'quote_request',
   'shore_edit',
   'real_site',
+  'assistant',
 ]);
 const PARK_STATUSES = new Set(['draft', 'quote_requested', 'quote_sent', 'won', 'lost']);
 
@@ -114,11 +116,42 @@ const cleanStats = (s) => {
   for (const [k, v] of Object.entries(s.types ?? {}).slice(0, 120)) if (/^[a-z0-9-]{1,40}$/.test(k)) types[k] = num(v);
   return { modules: num(s.modules), capacity: num(s.capacity), total: num(s.total), errors: num(s.errors), warnings: num(s.warnings), types };
 };
+/** Limite d'appels à l'assistant par adresse IP : 20 par minute, 200 par jour. */
+const rate = new Map();
+function rateOk(req) {
+  const ip = String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? '').split(',')[0].trim();
+  const now = Date.now();
+  const r = rate.get(ip) ?? { min: now, nMin: 0, day: now, nDay: 0 };
+  if (now - r.min > 60e3) Object.assign(r, { min: now, nMin: 0 });
+  if (now - r.day > 864e5) Object.assign(r, { day: now, nDay: 0 });
+  r.nMin++;
+  r.nDay++;
+  rate.set(ip, r);
+  if (rate.size > 5000) rate.delete(rate.keys().next().value);
+  return r.nMin <= 20 && r.nDay <= 200;
+}
 const str = (v, max = 200) => String(v ?? '').trim().slice(0, max);
 
 async function api(store, req, res, path) {
   if (path === '/api/health') return send(res, 200, { ok: true, storage: store.kind });
   if (req.method === 'GET' && path === '/api/catalog') return send(res, 200, { overrides: (await store.getSetting('catalog')) ?? {} });
+
+  // ---------------------------------------------------------- assistant de conception
+  if (req.method === 'POST' && path === '/api/assistant') {
+    const { message, brief, history } = await readBody(req);
+    const msg = str(message, 600);
+    if (!msg) return send(res, 400, { error: 'Message vide.' });
+    // sans clé Claude : le navigateur répond avec son propre analyseur
+    if (!assistantEnabled()) return send(res, 200, { result: null, mode: 'local' });
+    if (!rateOk(req)) return send(res, 200, { result: null, mode: 'local', note: 'limite atteinte' });
+    try {
+      const result = await askAssistant(msg, brief && typeof brief === 'object' ? brief : {}, Array.isArray(history) ? history : []);
+      return send(res, 200, { result, mode: result ? 'claude' : 'local' });
+    } catch (e) {
+      console.error('assistant :', e.message);
+      return send(res, 200, { result: null, mode: 'local' });
+    }
+  }
 
   // ---------------------------------------------------------- site réel (cartographie)
   if (req.method === 'GET' && path.startsWith('/api/geo/')) {

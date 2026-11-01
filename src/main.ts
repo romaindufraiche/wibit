@@ -19,6 +19,7 @@ import { eur } from './io/export';
 import { seasonFlyout } from './ui/season';
 import { account, openAuthDialog, parksFlyout, type ProjectStats } from './ui/account';
 import { initTracking, track } from './io/track';
+import { initAssistant } from './assistant/chat';
 import { applyOverrides } from './catalog/modules';
 import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
 
@@ -264,7 +265,8 @@ function openStartDialog() {
       <div class="start-alt">Ou commencer autrement :
         <button class="link-btn" data-a="pen">dessiner le parcours</button> ·
         <button class="link-btn" data-a="catalog">catalogue</button> ·
-        <button class="link-btn" data-a="templates">modèles</button>
+        <button class="link-btn" data-a="templates">modèles</button> ·
+        <button class="link-btn" data-a="assistant">décrire mon projet à l’assistant</button>
         ${account.loggedIn ? '' : '<span class="start-login">Déjà un compte ? <button class="link-btn" data-a="login">Se connecter</button></span>'}
       </div>
     </div>`;
@@ -323,6 +325,12 @@ function openStartDialog() {
   dlg.querySelector<HTMLElement>('[data-a=templates]')!.onclick = () => {
     prepare();
     openFlyout('templates');
+  };
+  dlg.querySelector<HTMLElement>('[data-a=assistant]')!.onclick = () => {
+    store.update((p) => (p.audience = audience), false);
+    dlg.close();
+    viewport.frameAll();
+    assistant.open();
   };
   dlg.querySelector<HTMLElement>('[data-a=login]')?.addEventListener('click', () => {
     dlg.close();
@@ -721,6 +729,24 @@ function requestQuote() {
   draw();
   dlg.showModal();
 }
+
+// ------------------------------------------------ assistant de conception
+
+const assistant = initAssistant({
+  project: () => store.project,
+  params: () => ({ ...genParams, audience: store.project.audience }),
+  total: () => store.derived.stats.total,
+  apply: (plan) => {
+    genParams = { ...plan.params };
+    const keepName = !/^(Nouveau parc|Parc [a-zé]+-\d+)$/.test(store.project.name);
+    store.setProject({ ...store.project, name: keepName ? store.project.name : `Parc ${plan.params.seed}`, site: plan.site, audience: plan.params.audience, modules: plan.modules });
+    viewport.frameAll();
+    track('generate', { seed: plan.params.seed, capacity: plan.params.capacity, budget: plan.params.budget ?? 0, modules: plan.modules.length, via: 'assistant' });
+  },
+  openRealSite: () => void openRealSite(),
+  requestQuote,
+  track,
+});
 
 // ------------------------------------------------ rafraîchissement
 

@@ -30,6 +30,7 @@ const P: Record<string, string> = {
   top: `<rect x="4" y="4" width="16" height="16" rx="1"/><rect x="9" y="9" width="6" height="6" ${S}/><path d="M12 1.5V4M12 20v2.5M1.5 12H4M20 12h2.5"/>`,
   search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/>',
   check: '<path d="M4 12.5l5 5L20 6.5"/>',
+  chat: '<path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
   alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
   share: '<circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.4 13.3l7.2 4.4M15.6 6.3l-7.2 4.4"/>',
