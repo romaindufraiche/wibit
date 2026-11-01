@@ -1584,3 +1584,132 @@ body.playing::after {
     display: none;
   }
 }
+
+/* site réel : carte */
+.dialog-map {
+  width: min(1400px, 96vw);
+  height: min(900px, 92vh);
+  max-height: 92vh;
+}
+.map-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  height: 100%;
+}
+.map-side {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  border-right: 1px solid var(--line);
+}
+.map-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.map-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--navy);
+}
+.map-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--slate);
+}
+.map-step b {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--navy);
+  color: var(--lime);
+  display: grid;
+  place-items: center;
+  font: 700 12px Inter, sans-serif;
+}
+.map-side .search-wrap {
+  max-width: none;
+}
+.map-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+}
+.map-result {
+  text-align: left;
+  padding: 7px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line-soft);
+  font-size: 12.5px;
+}
+.map-result:hover {
+  background: var(--sky);
+  border-color: var(--navy);
+}
+.map-result .tag {
+  display: inline-block;
+  background: var(--sky);
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+.map-status {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--soft);
+  border-left: 4px solid var(--lime);
+}
+.map-foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+}
+.map-canvas {
+  height: 100%;
+  min-height: 400px;
+}
+.map-pin span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--lime);
+  border: 3px solid var(--navy);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8);
+}
+.start-grid .wide {
+  grid-column: 1 / -1;
+  border-left: 4px solid var(--lime);
+}
+.real-btn {
+  width: 100%;
+  margin-bottom: 16px;
+  height: 40px;
+}
+.btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+@media (max-width: 800px) {
+  .map-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+}
+.map-side .search-wrap {
+  flex: none;
+}

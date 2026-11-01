@@ -169,11 +169,15 @@ export class Viewport {
 
   private buildSite() {
     const { site } = this.store.project;
-    const key = JSON.stringify([site.length, site.width, site.depth, site.outline ?? null]);
+    const key = JSON.stringify([site.length, site.width, site.depth, site.outline ?? null, site.imagery ? site.geo : null]);
     if (key === this.siteKey) return;
     this.siteKey = key;
     this.siteGroup.clear();
     const terrain = buildTerrain(site);
+    // site réel : eau plus transparente pour laisser voir la photo du fond du lac
+    const wm = this.water.material as THREE.MeshPhysicalMaterial;
+    wm.opacity = site.imagery ? 0.62 : 0.92;
+    wm.color.set(site.imagery ? 0x1e6688 : 0x1677a8);
     this.land = terrain.land;
     this.foam = terrain.foam;
     this.siteGroup.add(terrain.group);

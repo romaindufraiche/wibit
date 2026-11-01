@@ -241,6 +241,7 @@ function openStartDialog() {
         <button data-a="pen">${icon('pen', 22)}<b>Dessiner le parcours</b><span>Tracez une ligne, les modules s'y posent.</span></button>
         <button data-a="catalog">${icon('grid', 22)}<b>Partir du catalogue</b><span>Placez les modules un par un.</span></button>
         <button data-a="templates">${icon('layout', 22)}<b>Modèles de parcs</b><span>Kids Lagoon, Family Beach, SportsPark…</span></button>
+        <button data-a="real" class="wide">${icon('waves', 22)}<b>Partir de mon site réel</b><span>Une adresse ou un point sur la carte satellite : le vrai contour du lac et la photo aérienne deviennent le terrain 3D.</span></button>
       </div>
     </div>`;
   const go = (fn: () => void) => () => {
@@ -258,7 +259,30 @@ function openStartDialog() {
   });
   dlg.querySelector<HTMLElement>('[data-a=catalog]')!.onclick = go(() => catalog.open());
   dlg.querySelector<HTMLElement>('[data-a=templates]')!.onclick = go(() => openFlyout('templates'));
+  dlg.querySelector<HTMLElement>('[data-a=real]')!.onclick = () => {
+    dlg.close();
+    void openRealSite();
+  };
   dlg.showModal();
+}
+
+/** Carte : adresse ou point -> contour réel du plan d'eau + imagerie satellite comme terrain. */
+async function openRealSite() {
+  const { openSiteMap } = await import('./ui/sitemap');
+  openSiteMap({
+    current: store.project.site,
+    toast,
+    onApply: (site, label) => {
+      store.update((p) => {
+        p.site = site;
+        if (p.name === 'Nouveau parc') p.name = `Parc — ${label.split(',')[0]}`;
+      });
+      viewport.frameAll(true);
+      track('real_site', { label });
+      const outside = store.derived.issues.filter((i) => i.rule === 'R02').length;
+      toast(outside ? `Site réel chargé : ${outside} module(s) hors de l’eau, à déplacer ou régénérer.` : 'Site réel chargé : générez ou dessinez votre parc sur le vrai plan d’eau.');
+    },
+  });
 }
 
 // ------------------------------------------------ catalogue & barre rapide
@@ -328,7 +352,15 @@ function openFlyout(name: string) {
   catalog.close();
   flyout = name;
   el.innerHTML = '';
-  if (name === 'site') el.appendChild(siteFlyout(store, () => catalog.redraw()));
+  if (name === 'site') {
+    const real = h(`<button class="btn primary real-btn">${icon('waves', 16)} Choisir mon site réel sur la carte</button>`);
+    real.onclick = () => {
+      closeFlyout();
+      void openRealSite();
+    };
+    el.appendChild(real);
+    el.appendChild(siteFlyout(store, () => catalog.redraw()));
+  }
   if (name === 'parks') {
     const draw = () => {
       el.innerHTML = '';

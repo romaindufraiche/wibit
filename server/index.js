@@ -7,6 +7,7 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileStore, pgStore } from './store.js';
 import { overview, userInsights } from './insights.js';
+import { satelliteTile, searchPlaces, waterAround } from './geo.js';
 
 const scrypt = promisify(scryptCb);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -38,6 +39,7 @@ const EVENT_TYPES = new Set([
   'season_recompose',
   'quote_request',
   'shore_edit',
+  'real_site',
 ]);
 const PARK_STATUSES = new Set(['draft', 'quote_requested', 'quote_sent', 'won', 'lost']);
 
@@ -116,6 +118,31 @@ const str = (v, max = 200) => String(v ?? '').trim().slice(0, max);
 async function api(store, req, res, path) {
   if (path === '/api/health') return send(res, 200, { ok: true, storage: store.kind });
   if (req.method === 'GET' && path === '/api/catalog') return send(res, 200, { overrides: (await store.getSetting('catalog')) ?? {} });
+
+  // ---------------------------------------------------------- site réel (cartographie)
+  if (req.method === 'GET' && path.startsWith('/api/geo/')) {
+    const url = new URL(req.url ?? '/', 'http://x');
+    if (path === '/api/geo/search') {
+      const q = str(url.searchParams.get('q'), 160);
+      if (q.length < 2) return send(res, 400, { error: 'Recherche trop courte.' });
+      return send(res, 200, { results: await searchPlaces(q) });
+    }
+    if (path === '/api/geo/water') {
+      const lat = Number(url.searchParams.get('lat')),
+        lon = Number(url.searchParams.get('lon'));
+      const radius = Math.max(100, Math.min(3000, Number(url.searchParams.get('r')) || 800));
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180) return send(res, 400, { error: 'Coordonnées invalides.' });
+      return send(res, 200, { water: await waterAround(lat, lon, radius) });
+    }
+    const t = path.match(/^\/api\/geo\/tile\/(\d{1,2})\/(\d+)\/(\d+)$/);
+    if (t) {
+      const [z, x, y] = t.slice(1).map(Number);
+      if (z < 3 || z > 19 || x >= 2 ** z || y >= 2 ** z) return send(res, 400, { error: 'Tuile invalide.' });
+      const tile = await satelliteTile(z, x, y);
+      res.writeHead(200, { 'content-type': tile.type, 'cache-control': 'public, max-age=604800' });
+      return res.end(tile.buf);
+    }
+  }
 
   if (req.method === 'POST' && path === '/api/auth/register') {
     const { email, password, name, company, phone } = await readBody(req);

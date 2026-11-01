@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { bounds, offsetPolygon, siteOutline } from '../core/region';
+import { applyGeoUV, loadSatellite } from './satellite';
 import type { Site, Vec2 } from '../core/types';
 
 /*
@@ -152,7 +153,56 @@ export interface Terrain {
   foam: THREE.MeshBasicMaterial;
 }
 
+/** Site réel : sol texturé avec la photo satellite, fond du lac aussi (l'eau 3D teinte par-dessus). */
+function buildRealTerrain(site: Site): Terrain {
+  const t = textures();
+  const P = siteOutline(site);
+  const m = 90;
+  const box = { minX: -site.length / 2 - m, maxX: site.length / 2 + m, minZ: -site.width / 2 - m, maxZ: site.width / 2 + m };
+  const ext: Vec2[] = [
+    { x: box.minX, z: box.minZ },
+    { x: box.maxX, z: box.minZ },
+    { x: box.maxX, z: box.maxZ },
+    { x: box.minX, z: box.maxZ },
+  ];
+  const R = Math.max(site.length, site.width) / 2 + 500;
+  const square: Vec2[] = [
+    { x: -R, z: -R },
+    { x: R, z: -R },
+    { x: R, z: R },
+    { x: -R, z: R },
+  ];
+  const group = new THREE.Group();
+  const grassTex = t.grass.clone();
+  grassTex.repeat.set(1 / 14, 1 / 14);
+  grassTex.needsUpdate = true;
+  const grass = flat(square, [ext], 0.1, new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 }));
+  const landMat = new THREE.MeshStandardMaterial({ color: 0x8a9a78, roughness: 0.95 });
+  const land = flat(ext, [P], 0.12, landMat);
+  const bottomMat = new THREE.MeshStandardMaterial({ color: 0x3f7f9e, roughness: 1 });
+  const bottom = flat(P, [], -0.7, bottomMat);
+  const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+  land.name = grass.name = 'land';
+  group.add(grass, land, bottom);
+  if (site.geo) {
+    void loadSatellite(site.geo, box).then((sat) => {
+      if (!sat) return;
+      applyGeoUV(land.geometry, sat);
+      applyGeoUV(bottom.geometry, sat);
+      landMat.map = sat.texture;
+      landMat.color.set(0xffffff);
+      landMat.needsUpdate = true;
+      // fond du lac : même photo, assombrie, vue à travers l'eau
+      bottomMat.map = sat.texture;
+      bottomMat.color.set(0xb8d4e0);
+      bottomMat.needsUpdate = true;
+    });
+  }
+  return { group, land: [land, grass], foam: foamMat };
+}
+
 export function buildTerrain(site: Site): Terrain {
+  if (site.imagery && site.geo) return buildRealTerrain(site);
   const t = textures();
   const P = siteOutline(site);
   const b = bounds(P);

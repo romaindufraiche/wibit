@@ -102,6 +102,8 @@ export interface Site {
   geo?: Geo;
   /** Contour remodelé du plan d'eau (polygone) ; absent = rectangle longueur × largeur. */
   outline?: Vec2[];
+  /** Site réel : terrain texturé avec l'imagerie satellite (nécessite geo). */
+  imagery?: boolean;
 }
 
 export interface Geo {
