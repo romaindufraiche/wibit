@@ -268,16 +268,16 @@ function openStartDialog() {
     <div class="dlg-body start">
       <div class="mode-cards">
         <div class="mode-card">
-          <b>Bac à sable</b><span>Un lac imaginaire pour composer librement et tester des idées.</span>
+          <b>Bac à sable</b><img class="mode-img" src="/start/sandbox.jpg" alt="" loading="lazy"><span>Un lac imaginaire pour composer librement et tester des idées.</span>
           <button class="btn primary" data-go="sandbox">Commencer</button>
         </div>
         <div class="mode-card">
-          <b>Piscine</b><span>Un bassin carrelé aux dimensions de votre piscine.</span>
+          <b>Piscine</b><img class="mode-img" src="/start/pool.jpg" alt="" loading="lazy"><span>Un bassin carrelé aux dimensions de votre piscine.</span>
           <div class="seg pool-sizes">${POOL_SIZES.map(([, , l], i) => `<button type="button" data-p="${i}" class="${i === pool ? 'on' : ''}">${l}</button>`).join('')}</div>
           <button class="btn primary" data-go="pool">Commencer</button>
         </div>
         <div class="mode-card">
-          <b>Vrai terrain</b><span>Votre lac sur la carte, par adresse ou géolocalisation : on reprend sa vraie forme.</span>
+          <b>Vrai terrain</b><img class="mode-img" src="/start/real.jpg" alt="" loading="lazy"><span>Votre lac sur la carte, par adresse ou géolocalisation : on reprend sa vraie forme.</span>
           <button class="btn primary" data-go="real">Trouver mon site</button>
         </div>
       </div>
@@ -444,13 +444,15 @@ function openFlyout(name: string) {
   }
   flyout = name;
   el.innerHTML = '';
-  if (name === 'site') {
+  if (name === 'site' && store.project.site.kind !== 'pool') {
     const real = h(`<button class="btn primary real-btn">${icon('waves', 16)} Choisir mon site réel sur la carte</button>`);
     real.onclick = () => {
       closeFlyout();
       void openRealSite();
     };
     el.appendChild(real);
+  }
+  if (name === 'site') {
     el.appendChild(siteFlyout(store, () => catalog.redraw()));
     if (store.project.site.kind === 'pool') {
     viewport.decorEditing = true;
@@ -543,26 +545,32 @@ function openFlyout(name: string) {
       rl.appendChild(b);
     }
     el.appendChild(rl);
-    // modèles du mode en cours uniquement : piscine en mode piscine, lac sinon
-    const isPool = store.project.site.kind === 'pool';
-    const groups: [string, typeof TEMPLATES][] = [[isPool ? 'Modèles piscine' : 'Modèles de parcs', TEMPLATES.filter((t) => (t.site.kind === 'pool') === isPool)]];
-    for (const [title, items] of groups) {
-      el.appendChild(h(`<h3 style="margin-top:18px">${title}</h3>`));
-      const list = h(`<div class="tpl-list"></div>`);
-      for (const t of items) {
-        const b = h(`<button class="tpl"><b>${t.name}</b><span>${t.desc}<br>${t.site.kind === 'pool' ? 'Bassin ' : ''}${String(t.site.length).replace('.', ',')} × ${String(t.site.width).replace('.', ',')} m · profondeur ${String(t.site.depth).replace('.', ',')} m</span></button>`);
-        b.onclick = () => {
-          genParams = { ...t.params };
-          const site = t.site.kind === 'pool' ? { ...t.site } : { ...t.site, outline: naturalOutline(t.site.length, t.site.width, t.site.length + t.site.width) };
-          runGenerator(t.params, { site, name: t.name });
-          if (t.site.kind === 'pool') store.update((p) => (p.decor = defaultPoolDecor(p.site, decorUid)), false);
-          else store.update((p) => (p.decor = undefined), false);
-          closeFlyout();
-        };
-        list.appendChild(b);
-      }
-      el.appendChild(list);
+    // modèles du mode en cours uniquement. En piscine : ceux prévus pour la taille du bassin (25 m ou 50 m),
+    // appliqués sur le bassin affiché, dont les dimensions ne changent pas.
+    const cur = store.project.site;
+    const isPool = cur.kind === 'pool';
+    const sizeClass = (L: number) => (L >= 40 ? 50 : 25);
+    const items = TEMPLATES.filter((t) => (t.site.kind === 'pool') === isPool && (!isPool || sizeClass(t.site.length) === sizeClass(cur.length)));
+    el.appendChild(h(`<h3 style="margin-top:18px">${isPool ? `Modèles de piscine · bassin de ${sizeClass(cur.length)} m` : 'Modèles de parcs'}</h3>`));
+    const list = h(`<div class="tpl-list"></div>`);
+    for (const t of items) {
+      const where = isPool ? `Sur votre bassin de ${String(cur.length).replace('.', ',')} × ${String(cur.width).replace('.', ',')} m` : `${t.site.length} × ${t.site.width} m · profondeur ${String(t.site.depth).replace('.', ',')} m`;
+      const b = h(`<button class="tpl"><b>${t.name}</b><span>${t.desc}<br>${where}</span></button>`);
+      b.onclick = () => {
+        genParams = { ...t.params };
+        if (isPool) {
+          // même bassin (dimensions, profondeur et aménagements conservés)
+          runGenerator(t.params, { site: cur, name: t.name });
+          if (!store.project.decor?.length) store.update((p) => (p.decor = defaultPoolDecor(p.site, decorUid)), false);
+        } else {
+          runGenerator(t.params, { site: { ...t.site, outline: naturalOutline(t.site.length, t.site.width, t.site.length + t.site.width) }, name: t.name });
+          store.update((p) => (p.decor = undefined), false);
+        }
+        closeFlyout();
+      };
+      list.appendChild(b);
     }
+    el.appendChild(list);
   }
   if (name === 'layers') {
     el.appendChild(h(`<h3>Affichage</h3>`));
@@ -618,8 +626,8 @@ function refreshRail() {
     ['shore', 'Remodeler le rivage (ou cliquer sur la plage)', 'B', () => setTool(tool === 'shore' ? 'select' : 'shore'), tool === 'shore'],
     null,
     ['grid', 'Catalogue', 'C', () => (closeFlyout(), catalog.toggle()), catalog.isOpen()],
-    ['layout', 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
-    ['waves', "Plan d'eau, public & GPS", '', () => openFlyout('site'), flyout === 'site'],
+    ['layout', store.project.site.kind === 'pool' ? 'Modèles de piscine' : 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
+    ['waves', store.project.site.kind === 'pool' ? 'Bassin & public' : "Plan d'eau, public & GPS", '', () => openFlyout('site'), flyout === 'site'],
     ['cloud', 'Mes parcs & saison prochaine', '', () => openFlyout('parks'), flyout === 'parks'],
     null,
     ['cube', 'Vue 3D', '', () => viewport.frameAll(false), false],
@@ -698,6 +706,7 @@ exportMenu.innerHTML = [
 function withGeo(fn: (geo: NonNullable<Project['site']['geo']>) => void) {
   track('export_anchors');
   if (!store.project.modules.length) return toast('Aucun module : rien à ancrer.');
+  if (store.project.site.kind === 'pool') return toast('En piscine, les modules s’amarrent aux parois et au fond du bassin : pas de plan d’ancrage GPS.');
   const geo = store.project.site.geo;
   if (!geo) {
     openFlyout('site');

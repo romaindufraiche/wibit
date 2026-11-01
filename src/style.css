@@ -2091,3 +2091,16 @@ body.playing::after {
   background: #f4f7f9;
   border-radius: 6px;
 }
+.mode-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #dbe9f1;
+}
+@media (max-width: 760px) {
+  .mode-img {
+    aspect-ratio: 3 / 1;
+  }
+}

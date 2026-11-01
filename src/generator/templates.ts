@@ -62,6 +62,20 @@ export const TEMPLATES: Template[] = [
     params: { audience: 'sport', capacity: 28, intensity: 4, loop: false, bigSlide: false, standalones: false, course: true, seed: 'pool-challenge-2' },
   },
   {
+    id: 'pool-family-25',
+    name: 'Famille 25 m',
+    desc: 'Bassin de 25 m : parcours accessible parents-enfants, plateformes de repos.',
+    site: { length: 25, width: 15, depth: 2, kind: 'pool' },
+    params: { audience: 'family', capacity: 24, intensity: 2, loop: false, bigSlide: false, standalones: false, seed: 'pool-family-25-1' },
+  },
+  {
+    id: 'pool-kids-50',
+    name: 'Kids Splash 50 m',
+    desc: 'Bassin olympique : grand terrain de jeu pour les 6–12 ans, modules bas, surveillance renforcée.',
+    site: { length: 50, width: 25, depth: 2, kind: 'pool' },
+    params: { audience: 'kids', capacity: 50, intensity: 1, loop: false, bigSlide: false, standalones: false, seed: 'pool-kids-50-2' },
+  },
+  {
     id: 'pool-family',
     name: 'Fun Pool 50 m',
     desc: 'Bassin olympique : parcours familial avec jonctions, tours et zones de saut.',

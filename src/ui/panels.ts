@@ -290,15 +290,15 @@ export function siteFlyout(store: Store, onChange: () => void): HTMLElement {
       <label class="field">Profondeur<input type="number" min="0.8" max="15" step="0.1" data-k="depth" value="${site.depth}"></label>
       <label class="field">Public<select data-k="audience">${(Object.keys(AUDIENCE_LIMITS) as Audience[]).map((a) => `<option value="${a}" ${a === audience ? 'selected' : ''}>${AUDIENCE_LIMITS[a].label}</option>`).join('')}</select></label>
     </div>
-    <div class="note">Dimensions en mètres. ${pool ? 'L’accès se fait depuis la plage dallée en bas de la scène' : 'La plage est en bas de la scène'} ; la ligne orange marque la distance de sécurité de ${edgeMarginOf(site)} m aux bords.</div>
-    <h3 style="margin-top:20px">Position GPS</h3>
+    <div class="note">Dimensions en mètres. ${pool ? 'L’accès se fait depuis la plage dallée en bas de la scène' : 'La plage est en bas de la scène'} ; la ligne orange marque la distance de sécurité de ${String(edgeMarginOf(site)).replace(".", ",")} m aux bords.</div>
+    ${pool ? '' : `    <h3 style="margin-top:20px">Position GPS</h3>
     <div class="fields">
       <label class="field">Latitude (centre)<input type="number" step="0.000001" data-g="lat" value="${site.geo?.lat ?? ''}" placeholder="45.899"></label>
       <label class="field">Longitude (centre)<input type="number" step="0.000001" data-g="lon" value="${site.geo?.lon ?? ''}" placeholder="6.129"></label>
       <label class="field">Azimut du large (°)<input type="number" min="0" max="359" step="1" data-g="bearing" value="${site.geo?.bearing ?? 0}"></label>
       <label class="field">&nbsp;<button class="btn" data-a="locate">Ma position</button></label>
     </div>
-    <div class="note">Sert au plan d'ancrage (GPS Garmin, téléphone). Azimut : direction de la plage vers le large, 0° = nord, 90° = est.${site.geo ? ` <a class="link" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${site.geo.lat}&mlon=${site.geo.lon}#map=18/${site.geo.lat}/${site.geo.lon}">Vérifier sur la carte</a>` : ''}</div>
+    <div class="note">Sert au plan d'ancrage (GPS Garmin, téléphone). Azimut : direction de la plage vers le large, 0° = nord, 90° = est.${site.geo ? ` <a class="link" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${site.geo.lat}&mlon=${site.geo.lon}#map=18/${site.geo.lat}/${site.geo.lon}">Vérifier sur la carte</a>` : ''}</div>`}
   </div>`);
   const setGeo = (geo: { lat: number; lon: number; bearing: number }) => {
     store.update((p) => (p.site = { ...p.site, geo }));
@@ -313,13 +313,13 @@ export function siteFlyout(store: Store, onChange: () => void): HTMLElement {
       setGeo({ lat: Math.max(-85, Math.min(85, lat)), lon: Math.max(-180, Math.min(180, lon)), bearing: ((v('bearing') % 360) + 360) % 360 });
     };
   });
-  el.querySelector<HTMLElement>('[data-a=locate]')!.onclick = () => {
+  el.querySelector<HTMLElement>('[data-a=locate]')?.addEventListener('click', () => {
     navigator.geolocation?.getCurrentPosition(
       (pos) => setGeo({ lat: +pos.coords.latitude.toFixed(6), lon: +pos.coords.longitude.toFixed(6), bearing: store.project.site.geo?.bearing ?? 0 }),
       () => alert('Position indisponible : autorisez la géolocalisation ou saisissez les coordonnées.'),
       { enableHighAccuracy: true, timeout: 10000 },
     );
-  };
+  });
   el.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-k]').forEach((inp) => {
     inp.onchange = () => {
       const k = inp.dataset.k!;
