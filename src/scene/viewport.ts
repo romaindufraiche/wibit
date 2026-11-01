@@ -9,6 +9,7 @@ import type { Project } from '../core/types';
 import { buildTerrain } from './terrain';
 import { DECOR, decorModel, groundY } from './decor';
 import { realModel } from '../models/glb';
+import { isOffshore } from '../editor/flag';
 import { findSnap } from '../core/snap';
 import type { Placed } from '../core/types';
 import type { Store } from '../editor/store';
@@ -357,7 +358,9 @@ export class Viewport {
     this.flagKey = key;
     this.flagGroup.clear();
     if (!site.start || this.opts.decor) return; // masqué pendant la cinématique
-    const y = groundY(site);
+    // en pleine eau, le drapeau est planté sur une bouée orange
+    const offshore = isOffshore(site, site.start);
+    const y = offshore ? 0 : groundY(site);
     const g = new THREE.Group();
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 6.8, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }));
     pole.position.y = 3.4;
@@ -366,8 +369,10 @@ export class Viewport {
       new THREE.MeshStandardMaterial({ color: 0xc8d400, side: THREE.DoubleSide, roughness: 0.6 }),
     );
     cloth.geometry.computeVertexNormals();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.16, 20), new THREE.MeshStandardMaterial({ color: 0x003865 }));
-    base.position.y = 0.06;
+    const base = offshore
+      ? new THREE.Mesh(new THREE.SphereGeometry(0.9, 18, 12), new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.5 }))
+      : new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.16, 20), new THREE.MeshStandardMaterial({ color: 0x003865 }));
+    base.position.y = offshore ? 0.1 : 0.06;
     for (const m of [pole, cloth, base]) m.castShadow = true;
     g.add(pole, cloth, base);
     g.position.set(site.start.x, y, site.start.z);

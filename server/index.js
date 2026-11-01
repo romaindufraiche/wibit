@@ -116,7 +116,7 @@ const cleanStats = (s) => {
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const types = {};
   for (const [k, v] of Object.entries(s.types ?? {}).slice(0, 120)) if (/^[a-z0-9-]{1,40}$/.test(k)) types[k] = num(v);
-  return { modules: num(s.modules), capacity: num(s.capacity), total: num(s.total), errors: num(s.errors), warnings: num(s.warnings), types };
+  return { modules: num(s.modules), capacity: num(s.capacity), total: num(s.total), errors: num(s.errors), warnings: num(s.warnings), types, kind: s.kind === 'pool' ? 'pool' : 'lake' };
 };
 /** Limite d'appels à l'assistant par adresse IP : 20 par minute, 200 par jour. */
 const rate = new Map();

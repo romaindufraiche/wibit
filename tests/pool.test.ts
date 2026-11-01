@@ -31,3 +31,12 @@ it('modèles de piscine : appliqués sur chaque bassin de leur taille (25 m ou 5
       console.log(`${t.name} sur ${site.length}×${site.width} : ${r.modules.length} modules, ${computeStats(project).capacity} pers.`);
     }
 });
+
+it('piscine lagon (forme libre) : parc généré sans erreur', async () => {
+  const { naturalOutline } = await import('../src/core/region');
+  const site = { length: 50, width: 25, depth: 2, kind: 'pool' as const, outline: naturalOutline(50, 25, 3) };
+  const r = generatePark(site, { ...DEFAULT_PARAMS, audience: 'family', capacity: 50, loop: false, bigSlide: false, seed: 'lagon' });
+  const project = { version: 1 as const, name: '', site, audience: 'family' as const, modules: r.modules };
+  expect(r.modules.length).toBeGreaterThanOrEqual(5);
+  expect(validate(project).filter((i) => i.level === 'error')).toEqual([]);
+});

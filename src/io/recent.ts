@@ -16,9 +16,18 @@ export interface RecentPark {
 }
 
 const KEY = 'parkcraft.recent';
+/** 3 dernières générations par mode (piscine d'un côté, lacs et sites réels de l'autre). */
 const MAX = 3;
+export type Mode = 'pool' | 'lake';
+export const modeOf = (p: Project): Mode => (p.site.kind === 'pool' ? 'pool' : 'lake');
 
-export function loadRecent(): RecentPark[] {
+/** Dernières générations du mode demandé (ou toutes). */
+export function loadRecent(mode?: Mode): RecentPark[] {
+  const all = loadAll();
+  return mode ? all.filter((r) => modeOf(r.project) === mode).slice(0, MAX) : all;
+}
+
+function loadAll(): RecentPark[] {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? '[]');
     return Array.isArray(v) ? v.filter((r) => r?.project?.modules) : [];
@@ -61,7 +70,9 @@ export function thumbnail(dataUrl: string, w = 320, h = 180): Promise<string> {
 }
 
 export function pushRecent(r: RecentPark) {
-  const list = loadRecent().filter((x) => x.name !== r.name);
+  const list = loadAll().filter((x) => x.name !== r.name);
   list.unshift(r);
-  save(list.slice(0, MAX));
+  // on garde les 3 plus récentes de chaque mode
+  const keep = (['pool', 'lake'] as Mode[]).flatMap((m) => list.filter((x) => modeOf(x.project) === m).slice(0, MAX));
+  save(list.filter((x) => keep.includes(x)));
 }

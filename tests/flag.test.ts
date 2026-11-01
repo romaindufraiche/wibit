@@ -26,3 +26,14 @@ it('drapeau : le parc existant est recalé d’un bloc, accès au drapeau, sans 
   const d = (m: { x: number; z: number }[], i: number, j: number) => Math.hypot(m[i].x - m[j].x, m[i].z - m[j].z);
   expect(d(moved, 0, moved.length - 1)).toBeCloseTo(d(r.modules, 0, r.modules.length - 1), 1);
 });
+
+it('drapeau en pleine eau : l’accès est posé sur le drapeau, parc sans erreur', () => {
+  const flag = { x: 10, z: 0 };
+  const r = generatePark(site, { ...DEFAULT_PARAMS, start: flag, seed: 'large' });
+  const e = mainEntry(site, r.modules)!;
+  expect(Math.hypot(e.x - flag.x, e.z - flag.z)).toBeLessThan(8);
+  expect(validate({ version: 1, name: '', site, audience: 'mixed', modules: r.modules }).filter((i) => i.level === 'error')).toEqual([]);
+  const moved = moveParkToStart(site, r.modules, { x: -40, z: -20 })!;
+  const e2 = mainEntry(site, moved)!;
+  expect(Math.hypot(e2.x + 40, e2.z + 20)).toBeLessThan(1);
+});

@@ -2,6 +2,7 @@ import { MODULES, spec } from '../catalog/modules';
 import { angleOf, moduleOBB, obbDistance, obbOverlap, pointInOBB, snapTransform, worldPorts, zoneOBB, type OBB } from '../core/geometry';
 import { bounds, insideSite, obbInsideSite, outlineEdges, shoreEdges, siteOutline } from '../core/region';
 import { buildGraph } from '../core/graph';
+import { isOffshore, snapToShore } from '../editor/flag';
 import type { Audience, ModuleSpec, Placed, Project, Site, Vec2 } from '../core/types';
 import { AUDIENCE_LIMITS, RULES, computeStats, edgeMarginOf, validate } from '../rules/validate';
 import { hashSeed, makeRng, type Rng } from './rng';
@@ -377,6 +378,21 @@ export class Builder {
     let types = [...stockEntries, ...prefs].filter((t) => this.canUse(t));
     if (!types.length) types = this.usable().filter((s) => s.role === 'connector' && s.ports.some((pp) => pp.id === 'b')).map((s) => s.id);
     if (!types.length) return null;
+    // drapeau en pleine eau : l'accès est posé sur le drapeau, sortie tournée vers le large
+    if (this.p.start && isOffshore(this.site, this.p.start)) {
+      const inward = snapToShore(this.site, this.p.start).inward;
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const type = types[Math.min(types.length - 1, Math.floor(attempt / 8))];
+        const s = spec(type);
+        const out = s.ports.find((pp) => pp.id === 'b') ?? s.ports[0];
+        const r = attempt ? 1.2 * Math.sqrt(attempt) : 0;
+        const a = this.rng.next() * Math.PI * 2;
+        const tf = { x: this.p.start.x + Math.cos(a) * r, z: this.p.start.z + Math.sin(a) * r, rot: angleOf(inward.x, inward.z) - angleOf(out.dx, out.dz) };
+        if (!this.canUse(type) || !this.fits(s, tf, null)) continue;
+        const p = this.place(type, tf);
+        return this.portsOf(p.uid).sort((x, y) => y.dx * inward.x + y.dz * inward.z - (x.dx * inward.x + x.dz * inward.z))[0];
+      }
+    }
     // accès posé sur la berge côté plage, port de sortie tourné vers le large
     const edges = shoreEdges(this.outline);
     const totalLen = edges.reduce((a, e) => a + e.len, 0);

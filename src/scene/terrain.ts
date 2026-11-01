@@ -298,7 +298,9 @@ function buildPoolTerrain(site: Site): Terrain {
   const laneMat = new THREE.MeshStandardMaterial({ color: 0x163f7a, roughness: 0.5 });
   const L = b.maxX - b.minX,
     W = b.maxZ - b.minZ;
-  const lanes = Math.max(2, Math.round(W / 2.5));
+  // bassin de forme libre (lagon…) : pas de lignes de nage ni de plots de départ
+  const free = !!(site.outline && site.outline.length >= 3);
+  const lanes = free ? 0 : Math.max(2, Math.round(W / 2.5));
   for (let i = 1; i < lanes; i++) {
     const z = b.minZ + (W * i) / lanes;
     const line = flat(rect(b.minX + 2, z - 0.12, b.maxX - 2, z + 0.12), [], -depth + 0.01, laneMat);
@@ -306,7 +308,7 @@ function buildPoolTerrain(site: Site): Terrain {
     // T de fin de ligne
     for (const x of [b.minX + 2, b.maxX - 2]) group.add(flat(rect(x - 0.12, z - 0.5, x + 0.12, z + 0.5), [], -depth + 0.01, laneMat));
   }
-  group.add(poolFittings(b.minX, b.maxX, b.minZ, b.maxZ, lanes));
+  group.add(poolFittings(b.minX, b.maxX, b.minZ, b.maxZ, lanes, free));
   void L;
   const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
   grass.name = deck.name = 'land';
@@ -315,7 +317,7 @@ function buildPoolTerrain(site: Site): Terrain {
 }
 
 /** Équipements fixes : échelles inox, plots de départ, haie, bordure de plage, local technique et arbres. */
-function poolFittings(x0: number, x1: number, z0: number, z1: number, lanes: number): THREE.Group {
+function poolFittings(x0: number, x1: number, z0: number, z1: number, lanes: number, free = false): THREE.Group {
   const g = new THREE.Group();
   const inox = new THREE.MeshStandardMaterial({ color: 0xdfe5ea, roughness: 0.2, metalness: 0.9 });
   const white = new THREE.MeshStandardMaterial({ color: 0xf7f7f4, roughness: 0.5 });
@@ -349,10 +351,11 @@ function poolFittings(x0: number, x1: number, z0: number, z1: number, lanes: num
     }
     for (let k = 0; k < 3; k++) box(0.6, 0.04, 0.12, inox, x, -0.25 - k * 0.3, z - dir * 0.08);
   };
-  for (const x of [x0 + 2.5, x1 - 2.5]) {
-    ladder(x, z1, 1);
-    ladder(x, z0, -1);
-  }
+  if (!free)
+    for (const x of [x0 + 2.5, x1 - 2.5]) {
+      ladder(x, z1, 1);
+      ladder(x, z0, -1);
+    }
 
   // plots de départ sur le petit côté droit, un par ligne d'eau
   for (let i = 0; i < lanes; i++) {
@@ -369,10 +372,12 @@ function poolFittings(x0: number, x1: number, z0: number, z1: number, lanes: num
     oz0 = z0 - D,
     oz1 = z1 + D;
   const border = new THREE.MeshStandardMaterial({ color: 0xb5ab98, roughness: 0.9 });
-  box(ox1 - ox0, 0.06, 0.4, border, (ox0 + ox1) / 2, Y - 0.02, oz0 + 0.2);
-  box(ox1 - ox0, 0.06, 0.4, border, (ox0 + ox1) / 2, Y - 0.02, oz1 - 0.2);
-  box(0.4, 0.06, oz1 - oz0, border, ox0 + 0.2, Y - 0.02, (oz0 + oz1) / 2);
-  box(0.4, 0.06, oz1 - oz0, border, ox1 - 0.2, Y - 0.02, (oz0 + oz1) / 2);
+  if (!free) {
+    box(ox1 - ox0, 0.06, 0.4, border, (ox0 + ox1) / 2, Y - 0.02, oz0 + 0.2);
+    box(ox1 - ox0, 0.06, 0.4, border, (ox0 + ox1) / 2, Y - 0.02, oz1 - 0.2);
+    box(0.4, 0.06, oz1 - oz0, border, ox0 + 0.2, Y - 0.02, (oz0 + oz1) / 2);
+    box(0.4, 0.06, oz1 - oz0, border, ox1 - 0.2, Y - 0.02, (oz0 + oz1) / 2);
+  }
   const hedge = (ax: number, az: number, bx: number, bz: number) => {
     const len = Math.hypot(bx - ax, bz - az);
     const o = box(len, 1.1, 0.8, hedgeMat, (ax + bx) / 2, Y - 0.02, (az + bz) / 2);

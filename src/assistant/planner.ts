@@ -37,8 +37,9 @@ const lakeFor = (length: number, width: number, depth: number): Site => ({ lengt
 /** Plan d'eau type assez grand pour la capacité demandée (un vrai site n'est jamais modifié). */
 function siteFor(brief: Brief, site: Site): { site: Site; resizable: boolean } {
   const depth = brief.depth ?? site.depth;
-  if (brief.lake) return { site: lakeFor(brief.lake.length, brief.lake.width, depth), resizable: false };
-  if (site.geo) return { site: { ...site, depth }, resizable: false };
+  if (brief.lake && site.kind !== 'pool') return { site: lakeFor(brief.lake.length, brief.lake.width, depth), resizable: false };
+  // vrai terrain ou piscine : le plan d'eau n'est jamais modifié
+  if (site.geo || site.kind === 'pool') return { site: { ...site, depth }, resizable: false };
   let [L, W] = [site.length, site.width];
   const need = brief.capacity > 190 || (brief.course && brief.capacity >= 140) ? [420, 270] : brief.capacity > 130 ? [320, 200] : brief.capacity > 70 ? [220, 140] : [0, 0];
   if (L < need[0]) [L, W] = need;

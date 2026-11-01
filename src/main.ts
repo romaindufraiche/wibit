@@ -21,9 +21,9 @@ import { account, openAuthDialog, parksFlyout, type ProjectStats } from './ui/ac
 import { initTracking, track } from './io/track';
 import { initAssistant } from './assistant/chat';
 import { DECOR, defaultPoolDecor } from './scene/decor';
-import { moveParkToStart, snapToShore } from './editor/flag';
+import { isOffshore, moveParkToStart, snapToShore } from './editor/flag';
 import { loadRealModels } from './models/glb';
-import { loadRecent, pushRecent as pushRecentPark, thumbnail } from './io/recent';
+import { loadRecent, modeOf, pushRecent as pushRecentPark, thumbnail } from './io/recent';
 import { applyOverrides } from './catalog/modules';
 import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
 
@@ -55,6 +55,7 @@ function projectStats(): ProjectStats {
     errors: issues.filter((i) => i.level === 'error').length,
     warnings: issues.filter((i) => i.level === 'warning').length,
     types,
+    kind: store.project.site.kind === 'pool' ? 'pool' : 'lake',
   };
 }
 
@@ -396,10 +397,6 @@ let parksTab: 'projects' | 'season' = 'projects';
 
 let shoreBar: HTMLElement | null = null;
 function setTool(t: Tool) {
-  if (t === 'shore' && store.project.site.kind === 'pool') {
-    toast('Un bassin de piscine reste rectangulaire : changez ses dimensions dans le panneau Plan d’eau.');
-    t = 'select';
-  }
   tool = t;
   viewport.setPenMode(t === 'pen');
   viewport.setShoreEdit(t === 'shore');
@@ -413,9 +410,15 @@ function setTool(t: Tool) {
     closeFlyout();
     store.select([]);
     viewport.frameAll(true);
-    shoreBar = h(`<div class="shore-bar glass"><div><b>Remodeler le rivage</b><span>Glissez les points blancs · cliquez un point jaune pour en ajouter · clic droit pour supprimer</span></div>
-      <button class="btn" data-a="reset">Revenir au rectangle</button><button class="btn primary" data-a="done">Terminer</button></div>`);
+    const pool = store.project.site.kind === 'pool';
+    shoreBar = h(`<div class="shore-bar glass"><div><b>${pool ? 'Remodeler le bassin' : 'Remodeler le rivage'}</b><span>Glissez les points blancs · cliquez un point jaune pour en ajouter · clic droit pour supprimer</span></div>
+      ${pool ? '<button class="btn" data-a="lagoon">Forme lagon</button>' : ''}<button class="btn" data-a="reset">Revenir au rectangle</button><button class="btn primary" data-a="done">Terminer</button></div>`);
     shoreBar.querySelector<HTMLElement>('[data-a=done]')!.onclick = () => setTool('select');
+    shoreBar.querySelector<HTMLElement>('[data-a=lagoon]')?.addEventListener('click', () => {
+      // piscine lagon : contour arrondi et irrégulier aux dimensions du bassin
+      store.update((p) => (p.site = { ...p.site, outline: naturalOutline(p.site.length, p.site.width, 3) }));
+      viewport.setShoreEdit(true);
+    });
     shoreBar.querySelector<HTMLElement>('[data-a=reset]')!.onclick = () => {
       store.update((p) => (p.site = { ...p.site, outline: undefined }));
       viewport.setShoreEdit(true);
@@ -424,7 +427,7 @@ function setTool(t: Tool) {
   }
   if (t === 'flag') {
     catalog.close();
-    toast('Drapeau : cliquez sur la berge, à l’endroit où le parc doit commencer. Échap pour annuler.', 4500);
+    toast('Drapeau : cliquez à l’endroit où le parc doit commencer, sur la berge ou en pleine eau. Échap pour annuler.', 4500);
   }
   if (t === 'pen') {
     catalog.close();
@@ -507,6 +510,7 @@ function openFlyout(name: string) {
               },
               toast,
               login: () => openAuthDialog(afterLogin),
+              mode: () => modeOf(store.project),
             },
             draw,
           ),
@@ -538,9 +542,11 @@ function openFlyout(name: string) {
     draw();
   }
   if (name === 'templates') {
-    el.appendChild(h(`<h3>Dernières générations</h3>`));
-    const recent = loadRecent();
-    if (!recent.length) el.appendChild(h(`<div class="empty">Vos trois dernières générations aléatoires apparaîtront ici.</div>`));
+    // modes séparés : en piscine, seulement les générations de piscine ; sinon seulement celles des lacs
+    const mode = modeOf(store.project);
+    el.appendChild(h(`<h3>Dernières générations${mode === 'pool' ? ' en piscine' : ''}</h3>`));
+    const recent = loadRecent(mode);
+    if (!recent.length) el.appendChild(h(`<div class="empty">Vos trois dernières générations ${mode === 'pool' ? 'en piscine' : 'aléatoires'} apparaîtront ici.</div>`));
     const rl = h(`<div class="recent-list"></div>`);
     for (const r of recent) {
       const b = h(`<button class="recent">${r.thumb ? `<img src="${r.thumb}" alt="">` : '<span class="noimg"></span>'}<span><b>${esc(r.name)}</b><small>${r.modules} modules · ${r.capacity} pers. · ${eur(r.total)}</small><small>${new Date(r.at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span></button>`);
@@ -633,8 +639,8 @@ function refreshRail() {
   const items: ([string, string, string, () => void, boolean] | null)[] = [
     ['cursor', 'Sélection', 'V', () => setTool('select'), tool === 'select'],
     ['pen', 'Stylo — tracer un parcours', 'P', () => setTool(tool === 'pen' ? 'select' : 'pen'), tool === 'pen'],
-    ['shore', 'Remodeler le rivage (ou cliquer sur la plage)', 'B', () => setTool(tool === 'shore' ? 'select' : 'shore'), tool === 'shore'],
-    ['flag', 'Drapeau de départ : où commence le parc', 'D', () => setTool(tool === 'flag' ? 'select' : 'flag'), tool === 'flag'],
+    ['shore', store.project.site.kind === 'pool' ? 'Remodeler le bassin (forme libre, lagon)' : 'Remodeler le rivage (ou cliquer sur la plage)', 'B', () => setTool(tool === 'shore' ? 'select' : 'shore'), tool === 'shore'],
+    ['flag', 'Drapeau de départ : où commence le parc (berge ou pleine eau)', 'D', () => setTool(tool === 'flag' ? 'select' : 'flag'), tool === 'flag'],
     null,
     ['grid', 'Catalogue', 'C', () => (closeFlyout(), catalog.toggle()), catalog.isOpen()],
     ['layout', store.project.site.kind === 'pool' ? 'Modèles de piscine' : 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
@@ -834,6 +840,7 @@ const assistant = initAssistant({
 
 let saveTimer = 0;
 let lastAudience = store.project.audience;
+let lastKind = store.project.site.kind ?? 'lake';
 function refreshUI() {
   if (document.activeElement !== nameInput) nameInput.value = store.project.name;
   renderInspector(store, { rotate: rotateSelection, duplicate: duplicateSelection, remove: deleteSelection, focus: () => viewport.focusSelection() });
@@ -847,6 +854,10 @@ function refreshUI() {
   );
   $<HTMLButtonElement>('[data-action=undo]').disabled = !store.canUndo();
   $<HTMLButtonElement>('[data-action=redo]').disabled = !store.canRedo();
+  if ((store.project.site.kind ?? 'lake') !== lastKind) {
+    lastKind = store.project.site.kind ?? 'lake';
+    refreshRail();
+  }
   if (store.project.audience !== lastAudience) {
     lastAudience = store.project.audience;
     catalog.redraw();
@@ -864,7 +875,9 @@ viewport.onLandClick = () => {
 /** Drapeau posé : le départ est enregistré, puis le parc est recalé autour (ou régénéré depuis ce point). */
 viewport.onFlag = (x, z) => {
   const site = store.project.site;
-  const at = snapToShore(site, { x, z });
+  // en pleine eau : le drapeau reste où l'on a cliqué ; sur la plage ou contre la berge : calé sur le bord de l'eau
+  const offshore = isOffshore(site, { x, z });
+  const at = offshore ? { x, z } : snapToShore(site, { x, z });
   const start = { x: Math.round(at.x * 100) / 100, z: Math.round(at.z * 100) / 100 };
   setTool('select');
   track('flag');

@@ -28,6 +28,12 @@ interface Msg {
   text: string;
 }
 
+/** Exemples et réponses rapides propres au mode piscine (bassins de 25 ou 50 m, petits budgets). */
+const POOL_EXAMPLES = [
+  'Un parcours pour les enfants le mercredi après-midi',
+  'Une animation chronométrée pour les ados, budget 60 000 €',
+  'Un parc familial pour 30 personnes',
+];
 const EXAMPLES = [
   'Budget 500 000 €, 200 personnes, un parcours sportif pour des challenges chronométrés',
   'Un parc familial pour 80 personnes avec un grand toboggan',
@@ -37,10 +43,12 @@ const FOLLOW_UPS = ['Une autre version', 'Moins cher', 'Plus grand', 'Plus facil
 const AUD: Record<Brief['audience'], string> = { kids: 'Enfants', family: 'Familles', sport: 'Sportif (ados / adultes)', mixed: 'Tout public' };
 
 /** Question suivante quand une information clé manque. */
-function nextQuestion(known: Set<string>): { q: string; chips: string[] } | null {
-  if (!known.has('capacity')) return { q: 'Combien de personnes voulez-vous accueillir en même temps ?', chips: ['50 personnes', '100 personnes', '150 personnes', '200 personnes'] };
+function nextQuestion(known: Set<string>, pool = false): { q: string; chips: string[] } | null {
+  if (!known.has('capacity'))
+    return { q: 'Combien de personnes voulez-vous accueillir en même temps ?', chips: pool ? ['15 personnes', '25 personnes', '40 personnes', '60 personnes'] : ['50 personnes', '100 personnes', '150 personnes', '200 personnes'] };
   if (!known.has('audience')) return { q: 'Pour quel public ?', chips: ['Enfants', 'Familles', 'Sportifs', 'Tout public'] };
-  if (!known.has('budget')) return { q: 'Avez-vous un budget ?', chips: ['Budget 150 000 €', 'Budget 300 000 €', 'Budget 500 000 €', 'Sans limite de budget'] };
+  if (!known.has('budget'))
+    return { q: 'Avez-vous un budget ?', chips: pool ? ['Budget 40 000 €', 'Budget 80 000 €', 'Budget 150 000 €', 'Sans limite de budget'] : ['Budget 150 000 €', 'Budget 300 000 €', 'Budget 500 000 €', 'Sans limite de budget'] };
   return null;
 }
 
@@ -79,6 +87,8 @@ export function initAssistant(host: ChatHost) {
   const form = panel.querySelector('form')!;
   const input = form.querySelector('textarea')!;
   const history: Msg[] = [];
+  let convKind: 'pool' | 'lake' = host.project().site.kind === 'pool' ? 'pool' : 'lake';
+  const examples = () => (host.project().site.kind === 'pool' ? POOL_EXAMPLES : EXAMPLES);
   let brief: Brief | null = null;
   /** Réglages donnés par le client pendant la conversation. */
   const known = new Set<string>();
@@ -115,7 +125,7 @@ export function initAssistant(host: ChatHost) {
     fab.hidden = true;
     if (!log.childElementCount) {
       say('assistant', ['Bonjour ! Parlons de votre projet : budget, nombre de personnes, public, envies (toboggan, parcours chronométré…). Quand vous êtes prêt, je vous propose un parc en 3D.'], false);
-      setChips(EXAMPLES);
+      setChips(examples());
     }
     input.focus();
   };
@@ -194,7 +204,7 @@ export function initAssistant(host: ChatHost) {
       proposeBtn.querySelector('span')!.textContent = 'Proposer une autre version';
     }
     say('assistant', [...intro, ...plan.summary, ...(plan.ok ? ['Le parc est affiché en 3D. Dites-moi ce qu’il faut changer, ou demandez votre devis.'] : [])]);
-    setChips(plan.ok ? FOLLOW_UPS : EXAMPLES);
+    setChips(plan.ok ? FOLLOW_UPS : examples());
     host.track('assistant', { action: 'propose', capacity: b.capacity, budget: b.budget });
     proposeBtn.disabled = false;
   }
@@ -213,6 +223,14 @@ export function initAssistant(host: ChatHost) {
     say('user', text);
     const typing = say('assistant', '…', false);
     typing.classList.add('typing');
+    // modes séparés : changer de piscine à lac (ou l'inverse) repart d'un cahier des charges vierge
+    const kind = host.project().site.kind === 'pool' ? 'pool' : 'lake';
+    if (kind !== convKind) {
+      convKind = kind;
+      brief = null;
+      known.clear();
+      proposed = false;
+    }
     const current = currentBrief();
     let next: Brief;
     let action: Action | 'answer';
@@ -238,7 +256,7 @@ export function initAssistant(host: ChatHost) {
 
     if (action === 'help') {
       say('assistant', HELP);
-      setChips(EXAMPLES);
+      setChips(examples());
     } else if (action === 'real_site') {
       say('assistant', [...intro, 'Ouvrons la carte : cherchez votre lac et posez un point à l’endroit du parc. Ensuite, « Proposer un parc » le conçoit sur ce lac.']);
       host.openRealSite();
@@ -252,15 +270,15 @@ export function initAssistant(host: ChatHost) {
     } else if (keys.length || action === 'generate') {
       // la conversation avance : récapitulatif, question suivante, bouton « Proposer ce parc »
       brief = next;
-      const q = nextQuestion(known);
+      const q = nextQuestion(known, host.project().site.kind === 'pool');
       showBrief(next, [...intro, q ? q.q : 'J’ai tout ce qu’il me faut. Je vous propose le parc ?']);
       setChips(q ? q.chips : ['Oui, propose-moi le parc']);
     } else if (action === 'answer' && intro.length) {
       say('assistant', intro);
-      setChips(proposed ? FOLLOW_UPS : EXAMPLES);
+      setChips(proposed ? FOLLOW_UPS : examples());
     } else {
-      say('assistant', ['Je n’ai pas bien saisi. Indiquez par exemple un budget, un nombre de personnes ou le public visé — ou cliquez « Proposer un parc » pour partir de ce que nous avons déjà.', `Exemple : « ${EXAMPLES[0]} ».`]);
-      setChips(EXAMPLES);
+      say('assistant', ['Je n’ai pas bien saisi. Indiquez par exemple un budget, un nombre de personnes ou le public visé — ou cliquez « Proposer un parc » pour partir de ce que nous avons déjà.', `Exemple : « ${examples()[0]} ».`]);
+      setChips(examples());
     }
     busy = false;
     input.focus();

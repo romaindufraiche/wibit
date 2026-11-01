@@ -28,12 +28,15 @@ export interface ProjectStats {
   errors: number;
   warnings: number;
   types: Record<string, number>;
+  /** Type de plan d'eau du projet (les projets piscine et lac sont listés séparément). */
+  kind?: 'pool' | 'lake';
 }
 export interface ParkSummary {
   id: number;
   name: string;
   updated_at: string;
   modules: number;
+  stats?: { kind?: 'pool' | 'lake' };
 }
 
 function read(key: string) {
@@ -211,6 +214,8 @@ export interface ParksHost {
   open: (p: Project) => void;
   toast: (m: string) => void;
   login: () => void;
+  /** Mode affiché : seuls les projets de ce mode sont listés. */
+  mode: () => 'pool' | 'lake';
 }
 
 /** Panneau « Mes parcs » (comptes). */
@@ -223,7 +228,7 @@ export function parksFlyout(host: ParksHost, rerender: () => void): HTMLElement 
     return el;
   }
   const el = h(`<div>
-    <h3>Mes parcs <span class="muted-inline">${esc(account.user!.email)}</span></h3>
+    <h3>${host.mode() === "pool" ? "Mes projets de piscine" : "Mes projets de parc"} <span class="muted-inline">${esc(account.user!.email)}</span></h3>
     <div class="btn-row" style="margin:0 0 12px">
       <button class="btn primary" data-a="save">${icon('cloud', 15)} Enregistrer le parc affiché</button>
       <button class="btn" data-a="import">Importer un parc…</button>
@@ -267,9 +272,12 @@ export function parksFlyout(host: ParksHost, rerender: () => void): HTMLElement 
   };
   account
     .list()
-    .then((parks) => {
+    .then((all) => {
+      // modes séparés : projets piscine en mode piscine, projets de lac sinon
+      const mode = host.mode();
+      const parks = all.filter((p) => (p.stats?.kind === 'pool' ? 'pool' : 'lake') === mode);
       list.innerHTML = '';
-      if (!parks.length) list.appendChild(h(`<div class="empty">Aucun parc enregistré pour l'instant.</div>`));
+      if (!parks.length) list.appendChild(h(`<div class="empty">${mode === 'pool' ? 'Aucun projet de piscine' : 'Aucun projet de lac'} enregistré pour l'instant.${all.length > parks.length ? ` Vos ${all.length - parks.length} autre(s) projet(s) s'affichent dans ${mode === 'pool' ? 'les modes lac' : 'le mode piscine'}.` : ''}</div>`));
       for (const p of parks) {
         const row = h(`<div class="park-row ${p.id === account.currentParkId ? 'current' : ''}">
           <button class="grow" data-a="open"><b>${esc(p.name)}</b><span>${p.modules} modules · ${new Date(p.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span></button>
