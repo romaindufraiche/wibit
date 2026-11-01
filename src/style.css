@@ -2104,3 +2104,6 @@ body.playing::after {
     aspect-ratio: 3 / 1;
   }
 }
+body.flag-mode .viewport canvas {
+  cursor: crosshair;
+}

@@ -104,6 +104,8 @@ export interface Site {
   outline?: Vec2[];
   /** Site réel : vraies berges du plan d'eau pour le décor (peut dépasser la zone de travail `outline`). */
   shore?: Vec2[];
+  /** Départ du parc (drapeau posé sur la berge) : l'accès est installé au plus près de ce point. */
+  start?: Vec2;
   /** Type de plan d'eau : lac (par défaut) ou bassin de piscine (rectangle carrelé, plages en dalles). */
   kind?: 'lake' | 'pool';
 }

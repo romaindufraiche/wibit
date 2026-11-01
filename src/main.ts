@@ -9,7 +9,7 @@ import { DEFAULT_PARAMS, generatePark, type GenParams } from './generator/genera
 import { randomSeed } from './generator/rng';
 import { TEMPLATES } from './generator/templates';
 import { autosave, downloadCSV, downloadJSON, downloadPNG, loadAutosave, parseProject, printReport, projectFromHash, shareLink } from './io/export';
-import { AUDIENCE_LIMITS } from './rules/validate';
+import { AUDIENCE_LIMITS, validate } from './rules/validate';
 import { renderThumbnails } from './scene/thumbnails';
 import { Viewport } from './scene/viewport';
 import { PlayMode } from './scene/play';
@@ -21,6 +21,7 @@ import { account, openAuthDialog, parksFlyout, type ProjectStats } from './ui/ac
 import { initTracking, track } from './io/track';
 import { initAssistant } from './assistant/chat';
 import { DECOR, defaultPoolDecor } from './scene/decor';
+import { moveParkToStart, snapToShore } from './editor/flag';
 import { loadRealModels } from './models/glb';
 import { loadRecent, pushRecent as pushRecentPark, thumbnail } from './io/recent';
 import { applyOverrides } from './catalog/modules';
@@ -33,6 +34,7 @@ const viewport = new Viewport(document.getElementById('viewport')!, store);
 // réglages du générateur par défaut : aucune option imposée (ni boucle InfinityLoop, ni grand toboggan, ni modules autonomes)
 let genParams: GenParams = { ...DEFAULT_PARAMS, loop: false, bigSlide: false, standalones: false, course: false, seed: randomSeed() };
 const play = new PlayMode(viewport, store);
+(window as any).__app.play = play;
 function startPlay() {
   store.select([]);
   catalog.close();
@@ -162,7 +164,8 @@ function nudge(dx: number, dz: number) {
 
 function runGenerator(params: GenParams, opts: { site?: Project['site']; name?: string } = {}) {
   const site = opts.site ?? store.project.site;
-  const res = generatePark(site, params);
+  // départ du parc : drapeau posé sur la berge (s'il y en a un)
+  const res = generatePark(site, { ...params, start: site.start });
   if (!res.modules.length) {
     toast(res.log[0] ?? 'Génération impossible sur ce plan d’eau.');
     return;
@@ -386,7 +389,7 @@ renderThumbnails(MODULES, (id, url) => {
 
 // ------------------------------------------------ outils & panneaux latéraux
 
-type Tool = 'select' | 'pen' | 'shore';
+type Tool = 'select' | 'pen' | 'shore' | 'flag';
 let tool: Tool = 'select';
 let flyout: string | null = null;
 let parksTab: 'projects' | 'season' = 'projects';
@@ -400,6 +403,8 @@ function setTool(t: Tool) {
   tool = t;
   viewport.setPenMode(t === 'pen');
   viewport.setShoreEdit(t === 'shore');
+  viewport.flagMode = t === 'flag';
+  document.body.classList.toggle('flag-mode', t === 'flag');
   shoreBar?.remove();
   shoreBar = null;
   if (t === 'shore') {
@@ -416,6 +421,10 @@ function setTool(t: Tool) {
       viewport.setShoreEdit(true);
     };
     document.body.appendChild(shoreBar);
+  }
+  if (t === 'flag') {
+    catalog.close();
+    toast('Drapeau : cliquez sur la berge, à l’endroit où le parc doit commencer. Échap pour annuler.', 4500);
   }
   if (t === 'pen') {
     catalog.close();
@@ -595,6 +604,7 @@ function openFlyout(name: string) {
         <kbd>1 – 9</kbd><span>Poser un module récent</span>
         <kbd>P</kbd><span>Stylo (tracé à main levée)</span>
         <kbd>B</kbd><span>Remodeler le rivage (ou clic sur la plage)</span>
+        <kbd>D</kbd><span>Drapeau de départ : où commence le parc</span>
         <kbd>G</kbd><span>Générer un parc</span>
         <kbd>R / Maj+R</kbd><span>Pivoter de 90° / 15°</span>
         <kbd>Ctrl+D</kbd><span>Dupliquer</span>
@@ -624,6 +634,7 @@ function refreshRail() {
     ['cursor', 'Sélection', 'V', () => setTool('select'), tool === 'select'],
     ['pen', 'Stylo — tracer un parcours', 'P', () => setTool(tool === 'pen' ? 'select' : 'pen'), tool === 'pen'],
     ['shore', 'Remodeler le rivage (ou cliquer sur la plage)', 'B', () => setTool(tool === 'shore' ? 'select' : 'shore'), tool === 'shore'],
+    ['flag', 'Drapeau de départ : où commence le parc', 'D', () => setTool(tool === 'flag' ? 'select' : 'flag'), tool === 'flag'],
     null,
     ['grid', 'Catalogue', 'C', () => (closeFlyout(), catalog.toggle()), catalog.isOpen()],
     ['layout', store.project.site.kind === 'pool' ? 'Modèles de piscine' : 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
@@ -850,6 +861,35 @@ viewport.onDropModule = (type, x, z) => addModule(type, { x, z });
 viewport.onLandClick = () => {
   if (store.project.site.kind !== 'pool') setTool('shore');
 };
+/** Drapeau posé : le départ est enregistré, puis le parc est recalé autour (ou régénéré depuis ce point). */
+viewport.onFlag = (x, z) => {
+  const site = store.project.site;
+  const at = snapToShore(site, { x, z });
+  const start = { x: Math.round(at.x * 100) / 100, z: Math.round(at.z * 100) / 100 };
+  setTool('select');
+  track('flag');
+  const mods = store.project.modules;
+  if (!mods.length) {
+    store.update((p) => (p.site = { ...p.site, start }));
+    return toast('Départ du parc fixé : « Générer un parc » le construira à partir de ce point.');
+  }
+  const moved = moveParkToStart(site, mods, start);
+  const outside = (m: Placed[]) => validate({ ...store.project, site: { ...site, start }, modules: m }).filter((i) => i.rule === 'R02').length;
+  if (moved && outside(moved) <= outside(mods)) {
+    store.update((p) => {
+      p.site = { ...p.site, start };
+      p.modules = moved;
+    });
+    viewport.frameAll();
+    toast('Parc recalé autour du drapeau de départ — Ctrl+Z pour annuler.');
+  } else {
+    // le parc ne tient pas tel quel à cet endroit : on en génère un nouveau qui part du drapeau
+    store.update((p) => (p.site = { ...p.site, start }));
+    genParams = { ...genParams, audience: store.project.audience, seed: randomSeed() };
+    runGenerator(genParams);
+    toast('Le parc ne tenait pas tel quel à cet endroit : nouveau parc construit depuis le drapeau — Ctrl+Z pour revenir.', 5500);
+  }
+};
 viewport.onDecorSelect = (uid) => {
   const d = uid ? store.project.decor?.find((x) => x.uid === uid) : null;
   if (d) toast(`${DECOR[d.type].name} : glissez pour déplacer · R pour pivoter · Suppr pour retirer`, 4000);
@@ -1007,6 +1047,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'v') return setTool('select');
   if (k === 'p') return setTool(tool === 'pen' ? 'select' : 'pen');
   if (k === 'b') return setTool(tool === 'shore' ? 'select' : 'shore');
+  if (k === 'd') return setTool(tool === 'flag' ? 'select' : 'flag');
   if (k === 'r') return rotateSelection(e.shiftKey ? 15 : 90);
   if (k === 'g') return randomPark();
   if (k === 'f') return viewport.focusSelection();
@@ -1014,7 +1055,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape') {
     if (catalog.isOpen()) return catalog.close();
     if (flyout) return closeFlyout();
-    if (tool === 'pen' || tool === 'shore') return setTool('select');
+    if (tool !== 'select') return setTool('select');
     return store.select([]);
   }
   const step = e.shiftKey ? 0.1 : 0.5;

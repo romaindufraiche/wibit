@@ -128,6 +128,17 @@ export function offsetPolygon(poly: Vec2[], d: number): Vec2[] {
   });
 }
 
+/** Toutes les arêtes du contour, avec leur normale sortante (vers la terre). */
+export function outlineEdges(poly: Vec2[]): { a: Vec2; b: Vec2; n: Vec2; len: number }[] {
+  const n = outwardNormals(poly);
+  return poly
+    .map((a, i) => {
+      const b = poly[(i + 1) % poly.length];
+      return { a, b, n: n[i], len: Math.hypot(b.x - a.x, b.z - a.z) };
+    })
+    .filter((e) => e.len > 0.5);
+}
+
 /** Arêtes de rivage « plage » (normale sortante orientée vers +z, côté spectateurs). */
 export function shoreEdges(poly: Vec2[]): { a: Vec2; b: Vec2; n: Vec2; len: number }[] {
   const n = outwardNormals(poly);

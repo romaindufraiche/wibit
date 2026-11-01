@@ -60,6 +60,7 @@ export function planPark(brief: Brief, current: Project, seed: string, currentTo
     seed,
   };
   let { site, resizable } = siteFor(brief, current.site);
+  params.start = site.start ?? current.site.start;
   let res = generatePark(site, params);
   const evalRes = (mods: Placed[], s: Site) => {
     const project: Project = { version: 1, name: '', site: s, audience: params.audience, modules: mods };

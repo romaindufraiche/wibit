@@ -1,3 +1,4 @@
+import { buildBeach } from './beach';
 import * as THREE from 'three';
 import { spec } from '../catalog/modules';
 import { moduleOBB, obbCorners, rotate, worldPorts } from '../core/geometry';
@@ -108,6 +109,8 @@ export class PlayMode {
   private splashes: { mesh: THREE.Mesh; t: number }[] = [];
   private rng = makeRng(42);
   private shot = 0;
+  /** Plage (ponton, caisse…) : point de berge et direction de la terre, pour le plan « arrivée ». */
+  private beach: { shore: { x: number; z: number }; land: { x: number; z: number } } | null = null;
   private shotT = 0;
   private shotSeed = 0;
   private center = new THREE.Vector3();
@@ -134,6 +137,10 @@ export class PlayMode {
     this.buildWorld();
     this.savedCam = { pos: this.viewport.camera.position.clone(), target: this.viewport.controls.target.clone() };
     this.viewport.scene.add(this.group);
+    // ambiance de plage (lacs et sites réels) : ponton, caisse, file d'attente, glacier, palmiers
+    const beach = buildBeach(this.store.project.site, this.store.project.modules);
+    this.beach = beach ? { shore: beach.shore, land: beach.land } : null;
+    if (beach) this.group.add(beach.group);
     // pas de repères techniques pendant la lecture
     this.savedOpts = { ...this.viewport.opts };
     Object.assign(this.viewport.opts, { grid: false, ports: false, zones: false, anchors: false, buoys: false, decor: true });
@@ -547,7 +554,7 @@ export class PlayMode {
     this.shotT += dt;
     if (this.shotT > SHOT) {
       this.shotT = 0;
-      this.shot = (this.shot + 1) % 5;
+      this.shot = (this.shot + 1) % (this.beach ? 6 : 5);
       this.shotSeed = Math.random();
       if (this.fade) {
         this.fade.classList.remove('cut');
@@ -601,6 +608,16 @@ export class PlayMode {
         const ang = a0;
         cam.position.set(c.x + Math.cos(ang) * R * 0.8, 1 + u * R * 0.9, c.z + Math.sin(ang) * R * 0.8);
         look.set(c.x, 1.5, c.z);
+        break;
+      }
+      case 5: {
+        // arrivée à la plage : depuis l'eau, travelling lent vers le ponton, la caisse et les palmiers
+        const b = this.beach;
+        if (!b) break;
+        const side = { x: -b.land.z, z: b.land.x };
+        const off = 18 - u * 6;
+        cam.position.set(b.shore.x - b.land.x * off + side.x * (6 - u * 10), 3.2, b.shore.z - b.land.z * off + side.z * (6 - u * 10));
+        look.set(b.shore.x + b.land.x * 8, 2, b.shore.z + b.land.z * 8);
         break;
       }
     }

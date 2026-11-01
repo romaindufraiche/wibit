@@ -83,6 +83,11 @@ export class Viewport {
   private anchorGroup = new THREE.Group();
   private shoreGroup = new THREE.Group();
   private decorGroup = new THREE.Group();
+  private flagGroup = new THREE.Group();
+  private flagKey = '';
+  /** Outil drapeau : le clic pose le départ du parc. */
+  flagMode = false;
+  onFlag?: (x: number, z: number) => void;
   private decorObjs = new Map<string, { type: string; root: THREE.Group; ring: THREE.LineLoop }>();
   /** Modèles 3D réalistes (GLB) quand ils existent, sinon rendu procédural. */
   realistic = true;
@@ -137,7 +142,7 @@ export class Viewport {
     this.controls.maxDistance = 600;
 
     this.setupEnvironment();
-    this.scene.add(this.siteGroup, this.buoyGroup, this.anchorGroup, this.shoreGroup, this.decorGroup);
+    this.scene.add(this.siteGroup, this.buoyGroup, this.anchorGroup, this.shoreGroup, this.decorGroup, this.flagGroup);
 
     const ro = new ResizeObserver(() => this.resize());
     ro.observe(container);
@@ -344,9 +349,35 @@ export class Viewport {
     return (hit?.object.userData.decor as string) ?? null;
   }
 
+  /** Drapeau de départ (pôle blanc, fanion vert) sur la berge. */
+  private syncFlag() {
+    const { site } = this.store.project;
+    const key = JSON.stringify([site.start ?? null, site.kind ?? '', this.opts.decor]);
+    if (key === this.flagKey) return;
+    this.flagKey = key;
+    this.flagGroup.clear();
+    if (!site.start || this.opts.decor) return; // masqué pendant la cinématique
+    const y = groundY(site);
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 6.8, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }));
+    pole.position.y = 3.4;
+    const cloth = new THREE.Mesh(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 6.7, 0), new THREE.Vector3(3.4, 5.85, 0), new THREE.Vector3(0, 5, 0)]),
+      new THREE.MeshStandardMaterial({ color: 0xc8d400, side: THREE.DoubleSide, roughness: 0.6 }),
+    );
+    cloth.geometry.computeVertexNormals();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.16, 20), new THREE.MeshStandardMaterial({ color: 0x003865 }));
+    base.position.y = 0.06;
+    for (const m of [pole, cloth, base]) m.castShadow = true;
+    g.add(pole, cloth, base);
+    g.position.set(site.start.x, y, site.start.z);
+    this.flagGroup.add(g);
+  }
+
   sync() {
     this.buildSite();
     this.syncDecor();
+    this.syncFlag();
     const grid = this.siteGroup.getObjectByName('grid');
     if (grid) grid.visible = this.opts.grid;
     const { project, selection, derived } = this.store;
@@ -521,6 +552,11 @@ export class Viewport {
         }
       }
       if (e.button !== 0) return;
+      if (this.flagMode) {
+        const p = this.groundPoint(e);
+        if (p) this.onFlag?.(p.x, p.z);
+        return;
+      }
       if (this.penMode) {
         const p = this.groundPoint(e);
         if (!p) return;

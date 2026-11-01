@@ -1,6 +1,6 @@
 import { MODULES, spec } from '../catalog/modules';
 import { angleOf, moduleOBB, obbDistance, obbOverlap, pointInOBB, snapTransform, worldPorts, zoneOBB, type OBB } from '../core/geometry';
-import { bounds, insideSite, obbInsideSite, shoreEdges, siteOutline } from '../core/region';
+import { bounds, insideSite, obbInsideSite, outlineEdges, shoreEdges, siteOutline } from '../core/region';
 import { buildGraph } from '../core/graph';
 import type { Audience, ModuleSpec, Placed, Project, Site, Vec2 } from '../core/types';
 import { AUDIENCE_LIMITS, RULES, computeStats, edgeMarginOf, validate } from '../rules/validate';
@@ -44,6 +44,8 @@ export interface GenParams {
    * (toboggan), peu de branches, pas de boucle — pour les challenges et les courses.
    */
   course?: boolean;
+  /** Point de départ du parc (drapeau posé sur la berge) : l'accès y est installé. */
+  start?: Vec2;
 }
 
 /** Les produits à prévoir (ancrages, bouées, gilets…) représentent ~15 % du prix des modules. */
@@ -378,13 +380,23 @@ export class Builder {
     // accès posé sur la berge côté plage, port de sortie tourné vers le large
     const edges = shoreEdges(this.outline);
     const totalLen = edges.reduce((a, e) => a + e.len, 0);
-    for (let attempt = 0; attempt < 16; attempt++) {
-      const type = types[Math.min(types.length - 1, Math.floor(attempt / 4))];
+    // drapeau de départ : arête du contour la plus proche du drapeau, puis petits décalages le long de la berge
+    const flagSpots = this.p.start ? flagEdges(this.outline, this.p.start) : null;
+    for (let attempt = 0; attempt < (flagSpots ? 24 : 16); attempt++) {
+      const type = types[Math.min(types.length - 1, Math.floor(attempt / (flagSpots ? 6 : 4)))];
       const s = spec(type);
       const out = s.ports.find((pp) => pp.id === 'b')!;
-      let r = this.rng.next() * totalLen;
-      const e = edges.find((ed) => (r -= ed.len) <= 0) ?? edges[0];
-      const t = 0.2 + this.rng.next() * 0.6;
+      let e: (typeof edges)[number];
+      let t: number;
+      if (flagSpots) {
+        const spot = flagSpots[attempt % flagSpots.length];
+        e = spot.e;
+        t = spot.t;
+      } else {
+        let r = this.rng.next() * totalLen;
+        e = edges.find((ed) => (r -= ed.len) <= 0) ?? edges[0];
+        t = 0.2 + this.rng.next() * 0.6;
+      }
       const inward = { x: -e.n.x, z: -e.n.z };
       const depth = edgeMarginOf(this.site) + s.L / 2 + 0.05;
       const rot = angleOf(inward.x, inward.z) - angleOf(out.dx, out.dz);
@@ -657,6 +669,29 @@ export class Builder {
       }
     }
   }
+}
+
+/** Points de la berge autour du drapeau (le plus proche d'abord, puis de part et d'autre tous les 1,5 m). */
+function flagEdges(outline: Vec2[], flag: Vec2) {
+  const all = outlineEdges(outline);
+  let best = { i: 0, t: 0, d: Infinity };
+  all.forEach((e, i) => {
+    const vx = e.b.x - e.a.x,
+      vz = e.b.z - e.a.z;
+    const t = Math.max(0, Math.min(1, ((flag.x - e.a.x) * vx + (flag.z - e.a.z) * vz) / (vx * vx + vz * vz || 1)));
+    const d = Math.hypot(e.a.x + vx * t - flag.x, e.a.z + vz * t - flag.z);
+    if (d < best.d) best = { i, t, d };
+  });
+  const out: { e: (typeof all)[number]; t: number }[] = [];
+  for (const k of [0, 1, -1, 2, -2, 3, -3, 4, -4, 6, -6, 8]) {
+    // décalage le long de l'arête, en restant sur l'arête (ou la voisine)
+    let i = best.i;
+    let t = best.t + (k * 1.5) / Math.max(all[i].len, 0.1);
+    if (t > 1) [i, t] = [(i + 1) % all.length, Math.min(1, (t - 1) * (all[i].len / Math.max(all[(i + 1) % all.length].len, 0.1)))];
+    if (t < 0) [i, t] = [(i - 1 + all.length) % all.length, Math.max(0, 1 + t * (all[i].len / Math.max(all[(i - 1 + all.length) % all.length].len, 0.1)))];
+    out.push({ e: all[i], t: Math.max(0.02, Math.min(0.98, t)) });
+  }
+  return out;
 }
 
 function attempt(site: Site, p: GenParams, rng: Rng): Builder {
