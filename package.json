@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "start": "node server/index.js",
     "dev:api": "PORT=3001 node server/index.js",
-    "seed:demo": "vite-node scripts/seed-demo.ts"
+    "seed:demo": "vite-node scripts/seed-demo.ts",
+    "refs:wibit": "node scripts/wibit-references.mjs",
+    "models:meshy": "node scripts/meshy.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

@@ -7,6 +7,8 @@ import { moduleOBB, obbCorners } from '../core/geometry';
 import { bounds, editableOutline, offsetPolygon, siteOutline } from '../core/region';
 import type { Project } from '../core/types';
 import { buildTerrain } from './terrain';
+import { DECOR, decorModel, groundY } from './decor';
+import { realModel } from '../models/glb';
 import { findSnap } from '../core/snap';
 import type { Placed } from '../core/types';
 import type { Store } from '../editor/store';
@@ -76,6 +78,21 @@ export class Viewport {
   private buoyGroup = new THREE.Group();
   private anchorGroup = new THREE.Group();
   private shoreGroup = new THREE.Group();
+  private decorGroup = new THREE.Group();
+  private decorObjs = new Map<string, { type: string; root: THREE.Group; ring: THREE.LineLoop }>();
+  /** Modèles 3D réalistes (GLB) quand ils existent, sinon rendu procédural. */
+  realistic = true;
+  /** Reconstruit tous les modules (après chargement des modèles réalistes ou changement d'affichage). */
+  rebuildModules() {
+    for (const o of this.objs.values()) this.scene.remove(o.root);
+    this.objs.clear();
+    this.sync();
+  }
+  /** Aménagement sélectionné (gradins, transats…). */
+  decorSelected: string | null = null;
+  /** Sélection d'un aménagement (null : aucun). */
+  onDecorSelect?: (uid: string | null) => void;
+  private decorDrag: { uid: string; start: THREE.Vector3; orig: { x: number; z: number }; moved: boolean } | null = null;
   private land: THREE.Mesh[] = [];
   private foam: THREE.MeshBasicMaterial | null = null;
   /** Mode remodelage du rivage. */
@@ -116,7 +133,7 @@ export class Viewport {
     this.controls.maxDistance = 600;
 
     this.setupEnvironment();
-    this.scene.add(this.siteGroup, this.buoyGroup, this.anchorGroup, this.shoreGroup);
+    this.scene.add(this.siteGroup, this.buoyGroup, this.anchorGroup, this.shoreGroup, this.decorGroup);
 
     const ro = new ResizeObserver(() => this.resize());
     ro.observe(container);
@@ -273,8 +290,58 @@ export class Viewport {
 
   // ------------------------------------------------------------ synchro projet -> scène
 
+  /** Aménagements : création, position, surbrillance de la sélection. */
+  private syncDecor() {
+    const { project } = this.store;
+    const y = groundY(project.site);
+    const alive = new Set<string>();
+    for (const d of project.decor ?? []) {
+      alive.add(d.uid);
+      let o = this.decorObjs.get(d.uid);
+      if (o && o.type !== d.type) {
+        this.decorGroup.remove(o.root);
+        o = undefined;
+      }
+      if (!o) {
+        const root = decorModel(d.type);
+        root.traverse((c) => (c.userData.decor = d.uid));
+        const { L, W } = DECOR[d.type];
+        const pts = [new THREE.Vector3(-L / 2 - 0.3, 0.05, -W / 2 - 0.3), new THREE.Vector3(L / 2 + 0.3, 0.05, -W / 2 - 0.3), new THREE.Vector3(L / 2 + 0.3, 0.05, W / 2 + 0.3), new THREE.Vector3(-L / 2 - 0.3, 0.05, W / 2 + 0.3)];
+        const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: COLORS.selected }));
+        root.add(ring);
+        this.decorGroup.add(root);
+        o = { type: d.type, root, ring };
+        this.decorObjs.set(d.uid, o);
+      }
+      o.root.position.set(d.x, y, d.z);
+      o.root.rotation.y = d.rot;
+      o.ring.visible = d.uid === this.decorSelected;
+    }
+    for (const [uid, o] of this.decorObjs)
+      if (!alive.has(uid)) {
+        this.decorGroup.remove(o.root);
+        this.decorObjs.delete(uid);
+      }
+    if (this.decorSelected && !alive.has(this.decorSelected)) this.selectDecor(null);
+  }
+
+  selectDecor(uid: string | null) {
+    if (uid === this.decorSelected) return;
+    this.decorSelected = uid;
+    for (const [u, o] of this.decorObjs) o.ring.visible = u === uid;
+    this.onDecorSelect?.(uid);
+  }
+
+  private pickDecor(e: { clientX: number; clientY: number }): string | null {
+    if (!this.decorObjs.size) return null;
+    this.raycaster.setFromCamera(this.ndc(e), this.camera);
+    const hit = this.raycaster.intersectObjects([...this.decorObjs.values()].map((o) => o.root), true).find((h) => h.object.type === 'Mesh');
+    return (hit?.object.userData.decor as string) ?? null;
+  }
+
   sync() {
     this.buildSite();
+    this.syncDecor();
     const grid = this.siteGroup.getObjectByName('grid');
     if (grid) grid.visible = this.opts.grid;
     const { project, selection, derived } = this.store;
@@ -311,7 +378,7 @@ export class Viewport {
     const s = spec(m.type);
     const root = new THREE.Group();
     root.userData.uid = m.uid;
-    const model = buildModel(s);
+    const model = (this.realistic ? realModel(s) : null) ?? buildModel(s);
     model.traverse((c) => (c.userData.uid = m.uid));
     root.add(model);
     const pts = [
@@ -461,7 +528,20 @@ export class Viewport {
         return;
       }
       const uid = this.pick(e);
-      if (!uid) return;
+      if (!uid) {
+        const d = this.pickDecor(e);
+        const item = d ? this.store.project.decor?.find((x) => x.uid === d) : null;
+        const start = item ? this.groundPoint(e) : null;
+        if (item && start) {
+          this.store.select([]);
+          this.selectDecor(item.uid);
+          this.controls.enabled = false;
+          el.setPointerCapture(e.pointerId);
+          this.decorDrag = { uid: item.uid, start, orig: { x: item.x, z: item.z }, moved: false };
+        }
+        return;
+      }
+      this.selectDecor(null);
       if (e.shiftKey) {
         this.store.select([uid], true);
         return;
@@ -490,6 +570,26 @@ export class Viewport {
           this.stroke.pts.push({ x: p.x, z: p.z });
           this.updateStrokeMesh();
         }
+        return;
+      }
+      if (this.decorDrag) {
+        const p = this.groundPoint(e);
+        if (!p) return;
+        const d = this.decorDrag;
+        const dx = p.x - d.start.x,
+          dz = p.z - d.start.z;
+        if (!d.moved) {
+          if (Math.hypot(dx, dz) < 0.15) return;
+          d.moved = true;
+          this.store.checkpoint();
+        }
+        this.store.live((proj) => {
+          const it = proj.decor?.find((x) => x.uid === d.uid);
+          if (it) {
+            it.x = Math.round((d.orig.x + dx) * 4) / 4;
+            it.z = Math.round((d.orig.z + dz) * 4) / 4;
+          }
+        });
         return;
       }
       if (this.drag) {
@@ -548,6 +648,13 @@ export class Viewport {
         if (pts.length > 2) this.onStroke?.(pts);
         return;
       }
+      if (this.decorDrag) {
+        this.decorDrag = null;
+        this.controls.enabled = true;
+        if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+        this.downAt = null;
+        return;
+      }
       if (this.drag) {
         this.drag = null;
         this.controls.enabled = true;
@@ -556,6 +663,7 @@ export class Viewport {
       }
       if (this.downAt && e.button === 0 && Math.hypot(e.clientX - this.downAt.x, e.clientY - this.downAt.y) < 4 && !this.pick(e)) {
         this.store.select([]);
+        this.selectDecor(null);
         if (!this.shoreEdit && !this.penMode && this.pickLand(e)) this.onLandClick?.();
       }
       this.downAt = null;

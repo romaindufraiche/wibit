@@ -1,3 +1,4 @@
+import REFS from '../catalog/references.json';
 import { CATEGORY_LABELS, MODULES, spec } from '../catalog/modules';
 import type { Audience, Category, ModuleSpec } from '../core/types';
 import type { Store } from '../editor/store';
@@ -225,6 +226,16 @@ export interface InspectorHandlers {
   focus: () => void;
 }
 
+/** Visuel produit officiel (fiche du catalogue Wibit Sports), pour comparer avec la 3D. */
+function officialVisual(id: string): string {
+  const r = (REFS.modules as Record<string, { render: string | null; article: string | null; name: string }>)[id];
+  if (!r?.render) return '';
+  const img = r.render.endsWith('.webp') ? r.render : `${r.render}.webp`;
+  return `<details class="official"><summary>Visuel officiel${r.article ? ` · réf. ${esc(r.article)}` : ''}</summary>
+    <img src="${esc(img)}" alt="${esc(r.name)}" loading="lazy" referrerpolicy="no-referrer">
+    <a class="link" href="${esc(REFS.source)}" target="_blank" rel="noopener">Fiche sur wibitsports.com</a></details>`;
+}
+
 export function renderInspector(store: Store, hd: InspectorHandlers) {
   const el = document.getElementById('inspector')!;
   const sel = store.selected();
@@ -247,7 +258,8 @@ export function renderInspector(store: Store, hd: InspectorHandlers) {
         <span class="chip">Connexions <b>${used}/${s.ports.length}</b></span>
         <span class="chip"><b>${eur(s.price)}</b></span>
       </div>
-      ${issues.length ? `<div class="issue-list">${issues.map((i) => `<div class="issue"><span class="dot ${i.level}"></span><span>${esc(i.message)}</span></div>`).join('')}</div>` : ''}`;
+      ${issues.length ? `<div class="issue-list">${issues.map((i) => `<div class="issue"><span class="dot ${i.level}"></span><span>${esc(i.message)}</span></div>`).join('')}</div>` : ''}
+      ${officialVisual(s.id)}`;
   }
   const actions = h(`<div class="insp-actions">
       <button class="icon-btn" data-a="l" title="Pivoter à gauche (R)">${icon('rotl', 18)}</button>

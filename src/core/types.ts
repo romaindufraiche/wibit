@@ -124,6 +124,19 @@ export interface Project {
   modules: Placed[];
   /** Stock de modules possédés (parc existant / inventaire) : id -> quantité. */
   inventory?: Record<string, number>;
+  /** Aménagements autour du bassin (gradins, transats…) : déplaçables, hors règles et hors devis. */
+  decor?: DecorItem[];
+}
+
+export type DecorType = 'stands-3' | 'stands-5' | 'loungers' | 'lifeguard' | 'planter';
+
+export interface DecorItem {
+  uid: string;
+  type: DecorType;
+  x: number;
+  z: number;
+  /** Rotation (rad) ; par défaut, l'objet regarde vers −z. */
+  rot: number;
 }
 
 export type IssueLevel = 'error' | 'warning' | 'info';

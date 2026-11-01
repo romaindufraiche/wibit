@@ -12,3 +12,16 @@ it('piscine : parc généré dans un bassin de 25 × 12,5 m, marge de 1,5 m aux 
   expect(computeStats(project).capacity).toBeGreaterThanOrEqual(15);
   expect(validate(project).filter((i) => i.level === 'error')).toEqual([]);
 });
+
+it('modèles piscine : chaque modèle donne un parc sans erreur', async () => {
+  const { TEMPLATES } = await import('../src/generator/templates');
+  const pools = TEMPLATES.filter((t) => t.site.kind === 'pool');
+  expect(pools.length).toBeGreaterThanOrEqual(3);
+  for (const t of pools) {
+    const r = generatePark(t.site, t.params);
+    const project = { version: 1 as const, name: t.name, site: t.site, audience: t.params.audience, modules: r.modules };
+    expect(r.modules.length, t.name).toBeGreaterThanOrEqual(5);
+    expect(validate(project).filter((i) => i.level === 'error'), t.name).toEqual([]);
+    console.log(t.name, r.modules.length, 'modules', computeStats(project).capacity, 'pers.');
+  }
+});

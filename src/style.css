@@ -2078,3 +2078,29 @@ body.playing::after {
   color: var(--navy);
   box-shadow: 0 1px 3px rgba(0, 30, 60, 0.15);
 }
+.decor-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.decor-add .btn {
+  font-size: 12.5px;
+}
+.official {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  font-size: 12.5px;
+}
+.official summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--navy);
+}
+.official img {
+  display: block;
+  width: 100%;
+  margin: 8px 0 4px;
+  background: #f4f7f9;
+  border-radius: 6px;
+}

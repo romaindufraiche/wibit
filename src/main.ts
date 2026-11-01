@@ -20,6 +20,8 @@ import { seasonFlyout } from './ui/season';
 import { account, openAuthDialog, parksFlyout, type ProjectStats } from './ui/account';
 import { initTracking, track } from './io/track';
 import { initAssistant } from './assistant/chat';
+import { DECOR, defaultPoolDecor } from './scene/decor';
+import { loadRealModels } from './models/glb';
 import { loadRecent, pushRecent as pushRecentPark, thumbnail } from './io/recent';
 import { applyOverrides } from './catalog/modules';
 import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
@@ -164,13 +166,17 @@ function runGenerator(params: GenParams, opts: { site?: Project['site']; name?: 
     toast(res.log[0] ?? 'Génération impossible sur ce plan d’eau.');
     return;
   }
-  store.setProject({ ...store.project, name: opts.name ?? `Parc ${params.seed}`, site, audience: params.audience, modules: res.modules });
+  const decor = site.kind === store.project.site.kind && site.length === store.project.site.length && site.width === store.project.site.width ? store.project.decor : undefined;
+  store.setProject({ ...store.project, name: opts.name ?? `Parc ${params.seed}`, site, audience: params.audience, modules: res.modules, decor });
   viewport.frameAll();
   track(opts.name ? 'template' : 'generate', { seed: params.seed, capacity: params.capacity, budget: params.budget ?? 0, modules: res.modules.length });
   if (!opts.name) rememberGeneration();
   const st = store.derived.stats;
   toast(`${st.modules} modules · ${st.capacity} personnes · ${eur(st.total)}${st.loops ? ' · boucle' : ''} — variante « ${params.seed} »`);
 }
+
+let decorSeq = 0;
+const decorUid = () => `d${Date.now().toString(36)}${++decorSeq}`;
 
 /** Garde la génération affichée parmi les 3 dernières (avec une miniature), après rendu de la scène. */
 function rememberGeneration() {
@@ -303,6 +309,7 @@ function openStartDialog() {
     dlg.close();
     genParams = { ...genParams, audience: store.project.audience, ...params, seed: randomSeed() };
     runGenerator(genParams, { site });
+    if (site.kind === 'pool') store.update((p) => (p.decor = defaultPoolDecor(p.site, decorUid)), false);
     toast('Voici un premier parc : « Générer un parc » en propose un autre, le catalogue et le stylo permettent de l’ajuster.', 6500);
   };
   const go = (mode: string) => {
@@ -448,6 +455,19 @@ function openFlyout(name: string) {
     };
     el.appendChild(real);
     el.appendChild(siteFlyout(store, () => catalog.redraw()));
+    const deco = h(`<div><h3 style="margin-top:20px">Aménagements</h3><div class="decor-add"></div><div class="note">Ajoutés devant la caméra ; cliquez dessus pour les déplacer, R pour pivoter, Suppr pour retirer. Ils n'entrent pas dans le devis.</div></div>`);
+    const add = deco.querySelector<HTMLElement>('.decor-add')!;
+    for (const [type, d] of Object.entries(DECOR) as [keyof typeof DECOR, (typeof DECOR)[keyof typeof DECOR]][]) {
+      const b = h(`<button class="btn">${icon('plus', 15)} ${esc(d.name)}</button>`);
+      b.onclick = () => {
+        const t = viewport.controls.target;
+        const uid = decorUid();
+        store.update((p) => (p.decor = [...(p.decor ?? []), { uid, type, x: Math.round(t.x), z: Math.round(t.z), rot: 0 }]));
+        viewport.selectDecor(uid);
+      };
+      add.appendChild(b);
+    }
+    el.appendChild(deco);
   }
   if (name === 'parks' || name === 'season') {
     // « Mes parcs » : projets enregistrés et saison prochaine (stock, agrandissement) réunis
@@ -522,18 +542,30 @@ function openFlyout(name: string) {
       rl.appendChild(b);
     }
     el.appendChild(rl);
-    el.appendChild(h(`<h3 style="margin-top:18px">Modèles de parcs</h3>`));
-    const list = h(`<div class="tpl-list"></div>`);
-    for (const t of TEMPLATES) {
-      const b = h(`<button class="tpl"><b>${t.name}</b><span>${t.desc}<br>${t.site.length} × ${t.site.width} m · profondeur ${t.site.depth} m</span></button>`);
-      b.onclick = () => {
-        genParams = { ...t.params };
-        runGenerator(t.params, { site: { ...t.site, outline: naturalOutline(t.site.length, t.site.width, t.site.length + t.site.width) }, name: t.name });
-        closeFlyout();
-      };
-      list.appendChild(b);
+    // modèles : ceux du type de plan d'eau affiché d'abord (piscine ou lac)
+    const isPool = store.project.site.kind === 'pool';
+    const groups: [string, typeof TEMPLATES][] = [
+      ['Modèles piscine', TEMPLATES.filter((t) => t.site.kind === 'pool')],
+      ['Modèles lac', TEMPLATES.filter((t) => t.site.kind !== 'pool')],
+    ];
+    if (!isPool) groups.reverse();
+    for (const [title, items] of groups) {
+      el.appendChild(h(`<h3 style="margin-top:18px">${title}</h3>`));
+      const list = h(`<div class="tpl-list"></div>`);
+      for (const t of items) {
+        const b = h(`<button class="tpl"><b>${t.name}</b><span>${t.desc}<br>${t.site.kind === 'pool' ? 'Bassin ' : ''}${String(t.site.length).replace('.', ',')} × ${String(t.site.width).replace('.', ',')} m · profondeur ${String(t.site.depth).replace('.', ',')} m</span></button>`);
+        b.onclick = () => {
+          genParams = { ...t.params };
+          const site = t.site.kind === 'pool' ? { ...t.site } : { ...t.site, outline: naturalOutline(t.site.length, t.site.width, t.site.length + t.site.width) };
+          runGenerator(t.params, { site, name: t.name });
+          if (t.site.kind === 'pool') store.update((p) => (p.decor = defaultPoolDecor(p.site, decorUid)), false);
+          else store.update((p) => (p.decor = undefined), false);
+          closeFlyout();
+        };
+        list.appendChild(b);
+      }
+      el.appendChild(list);
     }
-    el.appendChild(list);
   }
   if (name === 'layers') {
     el.appendChild(h(`<h3>Affichage</h3>`));
@@ -804,7 +836,13 @@ function refreshUI() {
 store.on(refreshUI);
 
 viewport.onDropModule = (type, x, z) => addModule(type, { x, z });
-viewport.onLandClick = () => setTool('shore');
+viewport.onLandClick = () => {
+  if (store.project.site.kind !== 'pool') setTool('shore');
+};
+viewport.onDecorSelect = (uid) => {
+  const d = uid ? store.project.decor?.find((x) => x.uid === uid) : null;
+  if (d) toast(`${DECOR[d.type].name} : glissez pour déplacer · R pour pivoter · Suppr pour retirer`, 4000);
+};
 viewport.onStroke = (pts) => {
   const params = { ...genParams, audience: store.project.audience, seed: randomSeed() };
   const res = followStroke(store.project.site, store.project.modules, pts, params);
@@ -939,6 +977,19 @@ window.addEventListener('keydown', (e) => {
   if (ctrl && k === 's') return e.preventDefault(), actions.save(document.body);
   if (ctrl && k === 'a') return e.preventDefault(), store.select(store.project.modules.map((m) => m.uid));
   if (ctrl) return;
+  // aménagement sélectionné (gradins, transats…) : R pivote, Suppr retire, Échap désélectionne
+  const deco = viewport.decorSelected;
+  if (deco && (k === 'r' || k === 'delete' || k === 'backspace' || k === 'escape')) {
+    e.preventDefault();
+    if (k === 'escape') return viewport.selectDecor(null);
+    store.update((p) => {
+      if (k === 'r') {
+        const d = p.decor?.find((x) => x.uid === deco);
+        if (d) d.rot = (d.rot + (e.shiftKey ? Math.PI / 12 : Math.PI / 2)) % (Math.PI * 2);
+      } else p.decor = (p.decor ?? []).filter((x) => x.uid !== deco);
+    });
+    return;
+  }
   if (k === 'delete' || k === 'backspace') return e.preventDefault(), deleteSelection();
   if (/^[1-9]$/.test(k) && recent[Number(k) - 1]) return addModule(recent[Number(k) - 1]);
   if (k === 'c') return closeFlyout(), catalog.toggle();
@@ -1011,6 +1062,12 @@ fetch('/api/catalog')
     }
   })
   .catch(() => {});
+
+// modèles 3D réalistes générés depuis les rendus officiels (s'il y en a)
+void loadRealModels(
+  (id) => MODULES.find((m) => m.id === id) ?? null,
+  () => viewport.rebuildModules(),
+);
 
 refreshUI();
 (async () => {

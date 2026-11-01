@@ -1,0 +1,1048 @@
+{
+ "source": "https://www.wibitsports.com/all-modules/",
+ "fetchedAt": "2026-11-01",
+ "modules": {
+  "actionloop": {
+   "name": "ActionLoop",
+   "article": "30223",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30223_ActionLoop_persp_back.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/ActionLoop_02.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/ActionLoop_06.jpg"
+   ],
+   "dimensions": "8,2 x 6,4 m /  27’2″ x 21’2″",
+   "height": "2,7 m / 8’11”",
+   "minDepth": "2,25 m / 7’5″"
+  },
+  "actiontower-xl": {
+   "name": "ActionTower XL",
+   "article": "30000",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30000.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30000_ActionTower_XL_2018_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30000_ActionTower_XL_2018_pool_003_web.jpg"
+   ],
+   "dimensions": "4,5 x 3,9 m / 14′-9” x 12′-10”",
+   "height": "2 m / 6′-7”",
+   "minDepth": "1,9 m / 6′-2”"
+  },
+  "actiontower-xxl": {
+   "name": "ActionTower XXL",
+   "article": "30001",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30001_ActionTower_XXL_persp_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/6524fc9d11e85.jpg"
+   ],
+   "dimensions": "9,1 x 7,6 m / 29′-10” x 24′-11”",
+   "height": "3 m / 9′-10”",
+   "minDepth": "2,4 m / 7′-10”"
+  },
+  "balancebar-l": {
+   "name": "BalanceBar L",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf3645ddd4.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf3632da49.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/654e15bdec0cd-scaled-1.jpg"
+   ],
+   "dimensions": "6 x 2 / 19′ 8″ x 6′ 7″",
+   "height": "0,7 m / 2′ 4″",
+   "minDepth": "1,25 m / 4′ 1″"
+  },
+  "balancebar-s": {
+   "name": "BalanceBar S",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf4c6d7168.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf4c58f71c.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/654e15f8c7518-scaled-1.jpg"
+   ],
+   "dimensions": "3 x 2 / 9′ 10″ x 6′ 7″",
+   "height": "0,6 m / 1′ 12″",
+   "minDepth": "1,2 m / 3’-11”"
+  },
+  "balancebeam": {
+   "name": "BalanceBeam",
+   "article": "30002",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30002.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30002_BalanceBeam_2018_ow_002_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30002_BalanceBeam_2018_pool_001_web.jpg"
+   ],
+   "dimensions": "6 x 2 m / 19′-8” x 6′-7”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "bend": {
+   "name": "Bend",
+   "article": "30157",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30157_Bend_pers_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30157_Bend_2020_ow_012.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30157_Bend_pool_02.jpg"
+   ],
+   "dimensions": "5,5 x 5,5 m / 18′-1” x 18′-1”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11"
+  },
+  "bridge": {
+   "name": "Bridge",
+   "article": "30013",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30013.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30013_Bridge_2018_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30013_Bridge_2018_pool_003_web.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "1,2 m / 3′-11”",
+   "minDepth": "1,5 m / 4′-11”"
+  },
+  "cliff": {
+   "name": "Cliff",
+   "article": "30014",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30014.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30014_Cliff_2018_ow_012_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30014_Cliff_2018_pool_005_web_02.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "1,5 m / 4′-11”",
+   "minDepth": "1,65 m / 5′-6”"
+  },
+  "cornerswing": {
+   "name": "CornerSwing",
+   "article": "30191",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30191_CornerSwing_persp_back-1-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/2025_06_27_Griechenland_Seawaterpark-7133-1.jpg"
+   ],
+   "dimensions": "5,5 m x 5,5 m / 18‘1‘‘ x 18‘1‘‘",
+   "height": "4,5 m / 14‘9‘‘",
+   "minDepth": "2,05 m / 6‘9‘‘"
+  },
+  "curve": {
+   "name": "Curve",
+   "article": "30016",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30016.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30016_Curve_2018_ow_007_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30016_Curve_2018_pool_003_web.jpg"
+   ],
+   "dimensions": "5,5 x 5,5 m / 18′-1” x 18′-1”",
+   "height": "1,1 m / 3′-7”",
+   "minDepth": "1,5 m / 4′-11”"
+  },
+  "deck3": {
+   "name": "Deck3",
+   "article": "30147",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30147.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30147_Deck_3_2018_ow_001_web.jpg"
+   ],
+   "dimensions": "2,6 x 3 m / 8′-6” x 9′-10”",
+   "height": "1,6 m / 5-3”",
+   "minDepth": "1,7 m / 5′-7”"
+  },
+  "dipbars": {
+   "name": "DipBars",
+   "article": "30156",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30156_DipBars_persp_back-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30156_DipBars_003.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30156_DipBars_pool_01.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "1,3 m / 4′-3",
+   "minDepth": "1,6 m / 5′-3”"
+  },
+  "dome": {
+   "name": "Dome",
+   "article": "30078",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30078.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30078_Dome_2018_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30078_Dome_2018_pool_002_web.jpg"
+   ],
+   "dimensions": "6 x 3 m / 19′-8” x 9′-10”",
+   "height": "1,3 m / 4′-3”",
+   "minDepth": "1,8 m / 5′-11”"
+  },
+  "doublecurve": {
+   "name": "DoubleCurve",
+   "article": "30190",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30190_DoubleCurve_persp_back-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30190_DoubleCurve_04.jpg"
+   ],
+   "dimensions": "6 m x 6 m / 19‘8‘‘ x 19‘8‘‘",
+   "height": "0,85 m / 2‘9‘‘",
+   "minDepth": "1,35 m / 4‘5‘‘"
+  },
+  "flip": {
+   "name": "Flip",
+   "article": "30019",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30019.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30019_Flip_2015_ow_006_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/30019_Flip_2017_pool_001-scaled.jpg"
+   ],
+   "dimensions": "5,8 x 2 m / 19′ x 6′-7”",
+   "height": "1,1 m / 3′-7”",
+   "minDepth": "2 m / 6′-7”"
+  },
+  "highbars": {
+   "name": "HighBars",
+   "article": "30188",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30188_HighBars_persp_front-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30188_HighBars_OW_03.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30188_HighBars_Pool_01.jpg"
+   ],
+   "dimensions": "3 m x 3,2 m / 9‘10‘‘ x 10‘6‘‘",
+   "height": "2,4 m / 7‘10‘‘",
+   "minDepth": "2,1 m / 6‘11‘‘"
+  },
+  "highroller": {
+   "name": "HighRoller",
+   "article": "30073",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30073.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30073_High_Roller_2018_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30073_HighRoller_2015_pool_001_web.jpg"
+   ],
+   "dimensions": "9 x 2,7 m / 29′-6” x 8′-10”",
+   "height": "1,6 m / 5′-3”",
+   "minDepth": "1,7 m / 5′-7”"
+  },
+  "hop": {
+   "name": "Hop",
+   "article": "30159",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30159_Hop_persp_back-1-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30159_Hop_2020_ow_009_heller.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30159_Hop_pool_01.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "1 m / 3′-3”",
+   "minDepth": "1,4 m / 4′-7”"
+  },
+  "hurdle": {
+   "name": "Hurdle",
+   "article": "30079",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30079.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30079_Hurdle_051_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30079_Hurdle_2018_pool_026_web.jpg"
+   ],
+   "dimensions": "6 x 2,5 m / 19′-8” x 8′-2”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "ledge": {
+   "name": "Ledge",
+   "article": "30130",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30130.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30130_Ledge_2018_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30130_Ledge_2018_pool_004-scaled.jpg"
+   ],
+   "dimensions": "4,5 x 3,9 m / 14′-9” x 12′-10",
+   "height": "2,7 m / 8′-10”",
+   "minDepth": "1,25 m / 4′-1″"
+  },
+  "levelpass": {
+   "name": "LevelPass",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/10/00_LevelPass_persp_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/10/0.1_30196_LevelPass_2026_WibitSports-1.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/LevelPass.00_09_20_16.Standbild010-scaled.jpg"
+   ],
+   "dimensions": "6 x 3,5 m / 19’10” x 11’9″",
+   "height": "2,4 m / 7’10”",
+   "minDepth": "2,10 m / 6’11”"
+  },
+  "logroll": {
+   "name": "Logroll",
+   "article": "30175",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/Logroll_v01-1.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30175_Logroll_2022_ow_002.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30175_Logroll_TripleJ_Bahia_Shoot-5133.jpg"
+   ],
+   "dimensions": "6 m & 2 m / 19´8“ & 6´7“\nHeight: 0,75 m / 2´6“",
+   "height": null,
+   "minDepth": "1,3 m / 4´3“"
+  },
+  "level-r-connect": {
+   "name": "Level-R-Connect",
+   "article": "30192",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30192_LeveL-Connect_persp_front-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30192_LevelConnect_02.jpg"
+   ],
+   "dimensions": "4,4 m x 5,5 m / 14‘5‘‘ x 18‘1‘‘",
+   "height": "2,5 m / 8‘2‘‘",
+   "minDepth": "2,15 m / 7‘1‘‘"
+  },
+  "matchball": {
+   "name": "MatchBall",
+   "article": "30189",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30189_MatchBall_persp_front-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30189_Matchball_OW_01.jpg"
+   ],
+   "dimensions": "6 m x 4 m / 19‘8‘‘ x 13‘1‘‘",
+   "height": "3,2 m / 10‘6‘‘",
+   "minDepth": "1,25 m / 4‘1‘‘"
+  },
+  "monkeybars": {
+   "name": "MonkeyBars",
+   "article": "30072",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30072.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30072_Monkey_Bars_002_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30072_Monkey_Bars_017_Pool_web.jpg"
+   ],
+   "dimensions": "6 x 4 m / 19′-8” x 13′-1”",
+   "height": "2,1 m / 6′-11”",
+   "minDepth": "1,7m / 5′-7”"
+  },
+  "mountain": {
+   "name": "Mountain",
+   "article": "30168",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/Mountain_v01-1.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30168_Mountain_DRON_09.jpg"
+   ],
+   "dimensions": "13,7 m x 9 m / 44´11“ x 29´6“",
+   "height": "4 m / 13´1“",
+   "minDepth": "3 m / 9´11“"
+  },
+  "parcour-l-connect": {
+   "name": "Parcour-L-Connect",
+   "article": "30193",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30193_ParcouR-Connect_persp_front-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30193_ParcouR-Connect_01.jpg"
+   ],
+   "dimensions": "5,5 m x 4,4 m / 18’1” x 14’5”",
+   "height": "2,3 m / 7’7”",
+   "minDepth": "2,05 m / 6‘9‘‘"
+  },
+  "peak": {
+   "name": "Peak",
+   "article": "30129",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30129.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30129_Peak_2018_ow_002_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30129_Peak_2018_pool_001_web.jpg"
+   ],
+   "dimensions": "6 x 3,2 m / 19′-8” x 10′-6”",
+   "height": "2,6 m / 8′-6”",
+   "minDepth": "2,2 m / 7′-3″"
+  },
+  "plank": {
+   "name": "Plank",
+   "article": "30161",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30161_Plank_persp_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30161_ow_Plank_001-2.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30161_pool_Plank_04.jpg"
+   ],
+   "dimensions": "6 x 2 m / 19′-8” x 6′-7”",
+   "height": "1,2 m / 3′-11”",
+   "minDepth": "1,5 m / 4′-11”"
+  },
+  "powerhurdle": {
+   "name": "PowerHurdle",
+   "article": "30224",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30224_PowerHurdle_persp_back.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/PowerHurdle_06.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/PowerHurdle_13.jpg"
+   ],
+   "dimensions": "6 m x 2,2 m / 19’10” x 7’3″",
+   "height": "0,9 m / 3’0″",
+   "minDepth": "1,35 m / 4’6″"
+  },
+  "quarterpipe": {
+   "name": "Quarterpipe",
+   "article": "30100",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30100.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30100_Quarterpipe_2018_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30100_Quarterpipe_025_web.jpg"
+   ],
+   "dimensions": "6 x 2,7 m / 19′-8” x 8′-10”",
+   "height": "1,4 m / 4′-7”",
+   "minDepth": "1,6 m / 5′-3”"
+  },
+  "quickjump": {
+   "name": "QuickJump",
+   "article": "30178",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf5e7bf562.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf5e6860f4.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30178_QuickJump_32-scaled-1.jpg"
+   ],
+   "dimensions": "3 x 2 m/ 9′ 10″ x 6′ 7″",
+   "height": "0,8 m / 2′ 3″",
+   "minDepth": "1,3 m / 4′ 3″"
+  },
+  "quickjump-l": {
+   "name": "QuickJump L",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/10/00_QuickJump_L_persp_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/10/0.1_30197_QuickJump-L_2026_WibitSports.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/2025_10_21_new_products_Bahia-8903.jpg"
+   ],
+   "dimensions": "6 x 2 m / 19’10” x 6’7″",
+   "height": "0,8 m / 2′ 3″",
+   "minDepth": "1,3 m / 4′ 3″"
+  },
+  "roundabout": {
+   "name": "RoundAbout",
+   "article": "30087",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30087.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30087_Roundabout_2019_ow_003_web.jpg"
+   ],
+   "dimensions": "6 x 6 m / 19′-8” x 19′-8”",
+   "height": "1,2 m / 3′-11”",
+   "minDepth": "1,5 m / 4′-11”"
+  },
+  "slope": {
+   "name": "Slope",
+   "article": "30044",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30044-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30044_Slope_2018_ow_004_web-3.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30044_Slope_2018_pool_020_web-2.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "1,5 m / 4′-11”",
+   "minDepth": "1,65 m / 5′-6”"
+  },
+  "slide": {
+   "name": "Slide",
+   "article": "30042",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30042.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30042_Slide_2018_ow_005_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30042_Slide_2018_pool_004_web.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "1,1 m / 3′-7”",
+   "minDepth": "1,5 m / 4′-11”"
+  },
+  "spin": {
+   "name": "Spin",
+   "article": "30158",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30158_Spin_persp_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30158_Spin_2020_ow_007.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30158_Spin_pool_02.jpg"
+   ],
+   "dimensions": "6 x 4 m / 19′-8” x 13′-1”",
+   "height": "4 m / 13′-1”",
+   "minDepth": "1,4 m / 4′-7”"
+  },
+  "springboard": {
+   "name": "Springboard",
+   "article": "30120",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30120.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30120_Springboard_2017_ow_001_web.jpg"
+   ],
+   "dimensions": "6 x 6 m / 19′-8” x 19′-8”",
+   "height": "3,2 m / 10′-6”",
+   "minDepth": "2,5 m / 8′-2″"
+  },
+  "swing": {
+   "name": "Swing",
+   "article": "30047",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30047.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30047_Swing_2018_ow_003_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30047_Swing_2018_pool_001_web.jpg"
+   ],
+   "dimensions": "6 x 2 m / 19′-8” x 6′-7”",
+   "height": "3,2 m / 10′-6”",
+   "minDepth": "1,8 m / 5′-11”"
+  },
+  "target": {
+   "name": "Target",
+   "article": "30121",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30121.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30121_Target_2017_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30121_Target_2017_pool_003_web.jpg"
+   ],
+   "dimensions": "6 x 5,4 m / 19′-8” x 17′-9”",
+   "height": "0,3 m / 1”",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "targetjump": {
+   "name": "TargetJump",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf7113d6b8.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf710110be.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/654e19fd58175-scaled-1.jpg"
+   ],
+   "dimensions": "3 x 2,2 / 9′ 10″ x 7′ 3″",
+   "height": "1,7 m / 5′ 7″",
+   "minDepth": "1,75 m / 5’-9”"
+  },
+  "trampoline-2": {
+   "name": "Trampoline 2",
+   "article": "30050",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30050.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30050_Trampoline_2_2018_ow_002_web.jpg"
+   ],
+   "dimensions": "6 x 5 m / 19′-8” x 16′-5”",
+   "height": "0,9 m / 2′-11”",
+   "minDepth": "2,5 m / 8′-2”"
+  },
+  "trampoline-4": {
+   "name": "Trampoline 4",
+   "article": "30081",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30080.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30081_Trampoline4_008_web.jpg"
+   ],
+   "dimensions": "6 x 6 m / 19′-8” x 19′-8”",
+   "height": "0,9 m / 2′-11”",
+   "minDepth": "2,5 m / 8′-2”"
+  },
+  "triplejump": {
+   "name": "TripleJump",
+   "article": "30174",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/TripleJump_v01-1.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30174_Triplejump_2022_ow_001.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/30174_Logroll_TripleJ_Bahia_Shoot-5371-scaled.jpg"
+   ],
+   "dimensions": "3 m x 2 m / 9´11“ & 6´7“",
+   "height": "1 m / 3´4“",
+   "minDepth": "1,4 m / 4´7“"
+  },
+  "twist": {
+   "name": "Twist",
+   "article": "30128",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30128.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30128_Twist_2018_ow_003_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30128_Twist_2018_pool_001_web.jpg"
+   ],
+   "dimensions": "6 x 2,3 m / 19′-8” x 7′-7”",
+   "height": "0,64 m / 2′-1″",
+   "minDepth": "1,2 m / 3′-11″"
+  },
+  "wave": {
+   "name": "Wave",
+   "article": "30198",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/11/30198_Wave_main.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/01/0.1_30198_Wave_2026_WibitSports_Award-1.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/2025_07_28_Kroatien_New_Products_2025-7822-scaled.jpg"
+   ],
+   "dimensions": "18,8 m x 8,6 m / 62’2″ x 28’5″",
+   "height": "5 m / 16’7″",
+   "minDepth": "3,4 m / 11’2″"
+  },
+  "wiggleboard": {
+   "name": "WiggleBoard",
+   "article": "30187",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30187_WiggleBoard_persp_front-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30187_WiggleBoard_OW_03.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30187_WiggleBoard_Pool_03.jpg"
+   ],
+   "dimensions": "3 m x 2 m / 9‘10‘‘x 6‘7‘",
+   "height": "0,7 m / 2‘4‘‘",
+   "minDepth": "1,25 m / 4‘1‘‘"
+  },
+  "wigglebridge": {
+   "name": "WiggleBridge",
+   "article": "30068",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/11/30068_WiggleBridge_3_main.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/30068_Wiggle_Bridge_3_2018_ow_001.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/30068_Wiggle_Bridge_3_2018_pool_002.jpg"
+   ],
+   "dimensions": "6 m x 1,5 m / 19’8″ x 4’11”",
+   "height": "0,3 m / 12”",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "v-connect": {
+   "name": "V-Connect",
+   "article": "30105",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30105.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30105_V-Connect_2016_ow_004_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30105_V-Connect_2018_pool_006_web.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "zigzag": {
+   "name": "ZigZag",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf7bf1cadb.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/651bf7bddcff0.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/654e19cfe5c83-scaled-1.jpg"
+   ],
+   "dimensions": "6 x 3 / 19′ 8″ x 9′ 10″",
+   "height": "0,8 m / 2′ 3″",
+   "minDepth": "1,3 m / 4′ 3″"
+  },
+  "launchgate": {
+   "name": "LaunchGate",
+   "article": "30219",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30219_LaunchGate_persp_front.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/LaunchGate_04.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/LaunchGate_05.jpg"
+   ],
+   "dimensions": "3 m x 4,9 m / 9’11” x 16’3″",
+   "height": "2,4 m / 9’9″",
+   "minDepth": "1,4 m / 4’8″"
+  },
+  "battlelogs": {
+   "name": "BattleLogs",
+   "article": "30215",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30215_BattleLogs_persp_front.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/BattleLogs_04.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/BattleLogs_07.jpg"
+   ],
+   "dimensions": "6 m x 4 m / 19’10” x 13’3″",
+   "height": "2,9 m / 9’7″",
+   "minDepth": "1,4 m / 4’8″"
+  },
+  "comeback-sus": {
+   "name": "ComeBack SUS",
+   "article": "30214",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30214_ComeBackSUS_persp_back.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/ComeBack_SUS_02.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/ComeBack_SUS_06.jpg"
+   ],
+   "dimensions": "3 m x 4,9 m / 9’11” x 16’3″",
+   "height": "1,2 m / 1’0″",
+   "minDepth": "1,2 m / 4’0″"
+  },
+  "gapjump": {
+   "name": "GapJump",
+   "article": "30217",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30217_GapJump_persp_back.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/GapJump_05.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/GapJump_10.jpg"
+   ],
+   "dimensions": "6 m x 4 m / 19’10” x 13’3″",
+   "height": "1,6 m / 5’4″",
+   "minDepth": "1,7 m / 5’7″"
+  },
+  "hangshake": {
+   "name": "HangShake",
+   "article": "30216",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30216_HangShake_persp_front.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/HangShake_03.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/HangShake_05.jpg"
+   ],
+   "dimensions": "6 m x 4 m / 19’10” x 13’3″",
+   "height": "2,2 m / 7’3″",
+   "minDepth": "1,6 m / 5’3″"
+  },
+  "overclimb": {
+   "name": "OverClimb",
+   "article": "30218",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30218_OverClimb_persp_back.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/OverClimb_04.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/OverClimb_01.jpg"
+   ],
+   "dimensions": "6 m x 5,4 m / 19’10” x 17’10”",
+   "height": "3 m / 7’11”",
+   "minDepth": "2,1 m / 6’11”"
+  },
+  "swingaround": {
+   "name": "SwingAround",
+   "article": "30221",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30221_SwingAround_persp_front.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/SwingAround_06.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/SwingAround_03.jpg"
+   ],
+   "dimensions": "6,7 m x 6,7 m / 22’2″ x 22’2″",
+   "height": "3 m / 9’11”",
+   "minDepth": "1,5 m / 5’0″"
+  },
+  "endrise": {
+   "name": "EndRise",
+   "article": "30220",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30220_EndRise_persp_back.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/EndRise_10.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/EndRise_07.jpg"
+   ],
+   "dimensions": "7,6 m x 4,3 m  / 25’2″ x 14’3″",
+   "height": "2,1 m / 6’9″",
+   "minDepth": "1,95 m / 6’5″"
+  },
+  "watcharound": {
+   "name": "WatchAround",
+   "article": "30184",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30184.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30184.jpg"
+   ],
+   "dimensions": "2,5 x 2,5 / 8′ 2″ x 8′ 2″",
+   "height": "3,40 m / 10′ 10″",
+   "minDepth": "1,85 m / 6′ 1″"
+  },
+  "watchraft": {
+   "name": "WatchRaft",
+   "article": "30185",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/651bef2e83a3a.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30185.jpg"
+   ],
+   "dimensions": "4,5 x 4,5 / 14′ 9″ x 14′ 9″",
+   "height": "2,5 m / 8′ 2″",
+   "minDepth": "1,25 m / 4′ 1″"
+  },
+  "watchspot": {
+   "name": "WatchSpot",
+   "article": "30183",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/651bed6ade016.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30183.jpg"
+   ],
+   "dimensions": "3,9 x 4,5 / 12′ 10″ x 14′ 9″",
+   "height": "3,5 m / 11′ 6″",
+   "minDepth": "1,6 m / 5′ 2″"
+  },
+  "watchtopper": {
+   "name": "WatchTopper",
+   "article": "30186",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/09/30186_WatchTopper_persp_back-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/09/30186.jpg"
+   ],
+   "dimensions": "3 x 2,5 / 9′ 10″ x 8′ 2″",
+   "height": "3,5 m / 11′ 6″",
+   "minDepth": ""
+  },
+  "base": {
+   "name": "Base",
+   "article": "30003",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30003.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30003_Base_011_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30003_Base_pool_002-scaled-1.jpg"
+   ],
+   "dimensions": "3 x 2 m / 9′-10” x 6′-7”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "base-sus": {
+   "name": "Base SUS",
+   "article": "30131",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30131_Base_SUS_main-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30131_Base_SUS_2018_ow_002_web_02.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30131_Base_SUS_2018_pool_002_web_02.jpg"
+   ],
+   "dimensions": "3 x 2,9 m / 9′-10” x 9′-6”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "guardtower": {
+   "name": "GuardTower",
+   "article": "30074",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30074.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30074_Guard_Tower_ow_002_web_02.jpg"
+   ],
+   "dimensions": "6 x 3 m / 19′-8” x 9′-10”",
+   "height": "4 m / 13′-1”",
+   "minDepth": "1,9 m / 6′-3”"
+  },
+  "junction": {
+   "name": "Junction",
+   "article": "30025",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30025.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30025_Junction_005_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30025_Junction_003_web.jpg"
+   ],
+   "dimensions": "3 x 3 m / 9′-10” x 9′-10”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "l-connect-sus": {
+   "name": "L-Connect SUS",
+   "article": "30135",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30135_L-Connect_SUS_main-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30135_L-Connect_SUS_2018_ow_005_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30135_L-Connect_SUS_2018_pool_001_web.jpg"
+   ],
+   "dimensions": "5,5 x 4,4 m / 18′-1” x 14′-5”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "r-connect-sus": {
+   "name": "R-Connect SUS",
+   "article": "30136",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30136_R-Connect_SUS_persp_back-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30136_R-Connect_SUS_2018_ow_001_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30136_R-Connect_SUS_2018_pool_002_web.jpg"
+   ],
+   "dimensions": "5,5 x 4,4 m / 18′-1” x 14′-5”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "sidekick": {
+   "name": "SideKick",
+   "article": "30040",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30040.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30040_SideKick_2018_ow_003_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30040_SideKick_2018_pool_01_web.jpg"
+   ],
+   "dimensions": "2,5 x 2,5 m / 8′-2” x 8′-2”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "startgate-sus": {
+   "name": "StartGate SUS",
+   "article": "30132",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30132_StartGate_SUS_main-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30132_StartGate_SUS_2018_ow_001_web.jpg"
+   ],
+   "dimensions": "6 x 3,2 m / 19′-8” x 10′-6”",
+   "height": "3,1 m / 10′-2”",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "step": {
+   "name": "Step",
+   "article": "30104",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30104_Step_main-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30104_Step_2016_ow_027_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30104_Step_2018_pool_029_web.jpg"
+   ],
+   "dimensions": "2 x 2 m / 6′-7” x 6′-7”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2m / 3′-11”"
+  },
+  "step6": {
+   "name": "Step 6",
+   "article": "30110",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30110_Step_6_main-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30110_Step_6_2017_ow_004_web.jpg"
+   ],
+   "dimensions": "6,3 x 3 m / 20′-8” x 9′-10”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2m / 3′-11”"
+  },
+  "t-connect-sus": {
+   "name": "T-Connect SUS",
+   "article": "30134",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30134_T-Connect_SUS_main.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30134_T-Connect_SUS_2018_ow_003_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30131_T-Connect_SUS_2018_pool_002_web.jpg"
+   ],
+   "dimensions": "3 x 3 m / 9′-10” x 9′-10”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "takeoff": {
+   "name": "TakeOff",
+   "article": "30142",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30142.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30142_TakeOff_2018_pool_008_web.jpg"
+   ],
+   "dimensions": "2 x 1,5 m / 6′-7” x 4′-11”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "turn-sus": {
+   "name": "Turn SUS",
+   "article": "30137",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/08/30137_Turn_SUS_main-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30137_Turn_SUS_2018_ow_003_web.jpg"
+   ],
+   "dimensions": "5,5 x 5,5 m / 18′-1” x 18′-1”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "y-connect": {
+   "name": "V-Connect",
+   "article": "30076",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30076.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30076_Y-Connect_2018_ow_001_web.jpg"
+   ],
+   "dimensions": "3 x 3 m / 9′-10” x 9′-10”",
+   "height": "0,3 m / 1′",
+   "minDepth": "1,2 m / 3′-11”"
+  },
+  "bouncer-xxl": {
+   "name": "Bouncer XXL",
+   "article": "30008",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/Bouncer.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30008_Bouncer_XXL_001.jpg"
+   ],
+   "dimensions": "5,6 x 5,6 m / 18′-4” x 18′-4”",
+   "height": "0,9 m / 2′-11”",
+   "minDepth": "2,5 m / 8′-2”"
+  },
+  "doublerocker": {
+   "name": "DoubleRocker",
+   "article": "30018",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30018_Double_Rocker_persp-300x212-1.webp",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30018_Double_Rocker_002.jpg"
+   ],
+   "dimensions": "3,1 x 2,25 m / 10’2” x 7’4”",
+   "height": "1,2 m / 4’",
+   "minDepth": "1,5 m / 4’11”"
+  },
+  "hand": {
+   "name": "Hand",
+   "article": "30057",
+   "render": null,
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30057_Wibit_Hand_006-1.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30057_Wibit_Hand_ow_001-scaled.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/admin-ajax.webp"
+   ],
+   "dimensions": "3,5 x 3,7 x 0,1 m / 11’6” x 12’2”",
+   "height": "0,1 m / 0’4”",
+   "minDepth": "1,2 m / 3’11”"
+  },
+  "icetower-xxl": {
+   "name": "IceTower XXL",
+   "article": "30024",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30024.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30024_IceTower_XXL_010_1_web.jpg"
+   ],
+   "dimensions": "6 x 4,6 m / 19′-8” x 15′-1”",
+   "height": "4,2 m / 13′-9”",
+   "minDepth": "3 m / 9′-11′"
+  },
+  "matchballarena": {
+   "name": "MatchBallArena",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/10/00_MatchballArena_persp_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/10/0.10_30199_MatchBallArena_2026_WibitSports-2.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/10/0.1_30199_MatchBallArena_2026_WibitSports-1.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/2025_10_21_new_products_Bahia-9450.jpg"
+   ],
+   "dimensions": "8,5 x 5 m / 28’2″ x 16’7″",
+   "height": "3,2 m / 10’8″",
+   "minDepth": "1,2 m / 4′"
+  },
+  "multiclimb": {
+   "name": "MultiClimb",
+   "article": "30194",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30194_MultiClimb_persp_front-scaled-1.jpg",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30194_MultiClimb_01.jpg"
+   ],
+   "dimensions": "7,5 m x 6 m / 24’7” x 19’8”",
+   "height": "2,5 m / 8’2”",
+   "minDepth": "2,15 m / 7‘1‘‘"
+  },
+  "pologoal": {
+   "name": "PoloGoal",
+   "article": "30032",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30032.png",
+   "photos": [],
+   "dimensions": "2,6 x 1,2 m / 8′-6” x 3′-11”",
+   "height": "1,1 m / 3′-7”",
+   "minDepth": "–"
+  },
+  "rodeosplash": {
+   "name": "RodeoSplash",
+   "article": "30103",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30103.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30103_RodeoSplash_2019_camp_lake_003_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30103_RodeoSplash_2018_pool_002_web.jpg"
+   ],
+   "dimensions": "4 x 4,3 m / 13′-1” x 14′-1”",
+   "height": "1,6 m / 5′-3”",
+   "minDepth": "1,7 m / 5′-7”"
+  },
+  "speedslide": {
+   "name": "SpeedSlide",
+   "article": null,
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/10/00_SpeedSlide_persp_front-scaled.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/12/2025_07_28_Kroatien_New_Products_canon2-9799-scaled-1.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/10/0.9_30195_SpeedSlide_2026_WibitSports-1.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/2025_10_21_new_products_Bahia-9764.jpg"
+   ],
+   "dimensions": "14 x 3,3 m / 46’4″ x 10’11”",
+   "height": "0,6 m / 2′",
+   "minDepth": "1,2 m / 4′"
+  },
+  "stepslide": {
+   "name": "StepSlide",
+   "article": "30222",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2026/10/30222_StepSlide_persp_front.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/StepSlide_01.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2026/10/StepSlide_10.jpg"
+   ],
+   "dimensions": "3,9 m x 2 m / 12’11” x 6’7″",
+   "height": "1 m / 3’4″",
+   "minDepth": "1,4 m / 4’8″"
+  },
+  "triplescore": {
+   "name": "TripleScore",
+   "article": "30200",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/11/30200_TripleScore_main.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/10/0.2_30200_TripleScore_WibitSports-1.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/11/2025_10_21_new_products_Bahia-9331.jpg"
+   ],
+   "dimensions": "2,9 x 2,4 m / 9’5″ x 8′",
+   "height": "1,6 m / 5’2″",
+   "minDepth": "–"
+  },
+  "volley": {
+   "name": "Volley",
+   "article": "30055",
+   "render": "https://www.wibitsports.com/wp-content/uploads/2025/08/30055.png",
+   "photos": [
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30055_Volley_2019_pool_002_web.jpg",
+    "https://www.wibitsports.com/wp-content/uploads/2025/08/30055_Volley_2019_ow_005_web.jpg"
+   ],
+   "dimensions": "11,3 x 5,3 m / 37′-1” x 17′-5”",
+   "height": "1,6 m / 5′-3”",
+   "minDepth": "–"
+  }
+ }
+}

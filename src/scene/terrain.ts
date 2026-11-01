@@ -233,15 +233,15 @@ function poolTextures() {
     for (let i = 0; i < 4; i++)
       for (let j = 0; j < 4; j++) {
         const k = (rnd() - 0.5) * 14;
-        ctx.fillStyle = `rgb(${226 + k},${220 + k},${208 + k})`;
+        ctx.fillStyle = `rgb(${196 + k},${182 + k},${160 + k})`;
         ctx.fillRect(i * s, j * s, s, s);
       }
     for (let i = 0; i < 9000; i++) {
       const k = (rnd() - 0.5) * 40;
-      ctx.fillStyle = `rgba(${200 + k},${192 + k},${178 + k},0.5)`;
+      ctx.fillStyle = `rgba(${170 + k},${156 + k},${134 + k},0.5)`;
       ctx.fillRect(rnd() * 512, rnd() * 512, 1.5, 1.5);
     }
-    ctx.strokeStyle = 'rgb(188,180,166)';
+    ctx.strokeStyle = 'rgb(150,138,118)';
     ctx.lineWidth = 4;
     for (let i = 0; i <= 4; i++) {
       ctx.beginPath();
@@ -256,7 +256,7 @@ function poolTextures() {
   return poolCache;
 }
 
-const POOL_DECK = 7; // plage dallée autour du bassin (m)
+const POOL_DECK = 10; // plage dallée autour du bassin (m)
 const COPING_Y = 0.3; // margelle au-dessus de l'eau (m)
 
 /** Bassin de piscine : parois et fond carrelés, lignes de nage, margelle, plage dallée, pelouse. */
@@ -306,9 +306,116 @@ function buildPoolTerrain(site: Site): Terrain {
     // T de fin de ligne
     for (const x of [b.minX + 2, b.maxX - 2]) group.add(flat(rect(x - 0.12, z - 0.5, x + 0.12, z + 0.5), [], -depth + 0.01, laneMat));
   }
+  group.add(poolFittings(b.minX, b.maxX, b.minZ, b.maxZ, lanes));
   void L;
   const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
   grass.name = deck.name = 'land';
   group.add(grass, deck, coping, copingEdge, walls, frieze, floor);
   return { group, land: [deck, grass], foam: foamMat };
+}
+
+/** Équipements fixes : échelles inox, plots de départ, haie, bordure de plage, local technique et arbres. */
+function poolFittings(x0: number, x1: number, z0: number, z1: number, lanes: number): THREE.Group {
+  const g = new THREE.Group();
+  const inox = new THREE.MeshStandardMaterial({ color: 0xdfe5ea, roughness: 0.2, metalness: 0.9 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf7f7f4, roughness: 0.5 });
+  const navy = new THREE.MeshStandardMaterial({ color: 0x003865, roughness: 0.5 });
+  const hedgeMat = new THREE.MeshStandardMaterial({ color: 0x3e7a35, roughness: 0.95 });
+  const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    o.position.set(x, y + h / 2, z);
+    o.castShadow = o.receiveShadow = true;
+    g.add(o);
+    return o;
+  };
+  const Y = COPING_Y;
+  const L = x1 - x0,
+    W = z1 - z0;
+
+  // échelles : deux mains courantes en col de cygne + marches immergées, sur chaque grand côté
+  const ladder = (x: number, z: number, dir: 1 | -1) => {
+    for (const dx of [-0.3, 0.3]) {
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.025, 6, 12, Math.PI), inox);
+      arc.rotation.y = Math.PI / 2;
+      arc.position.set(x + dx, Y + 0.35, z + dir * 0.35);
+      arc.castShadow = true;
+      g.add(arc);
+      const down = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.6, 6), inox);
+      down.position.set(x + dx, Y + 0.35 - 0.8, z - dir * 0.02);
+      g.add(down);
+      const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, Y + 0.35, 6), inox);
+      foot.position.set(x + dx, (Y + 0.35) / 2, z + dir * 0.7);
+      g.add(foot);
+    }
+    for (let k = 0; k < 3; k++) box(0.6, 0.04, 0.12, inox, x, -0.25 - k * 0.3, z - dir * 0.08);
+  };
+  for (const x of [x0 + 2.5, x1 - 2.5]) {
+    ladder(x, z1, 1);
+    ladder(x, z0, -1);
+  }
+
+  // plots de départ sur le petit côté droit, un par ligne d'eau
+  for (let i = 0; i < lanes; i++) {
+    const z = z0 + (W * (i + 0.5)) / lanes;
+    box(0.55, 0.45, 0.55, white, x1 + 0.55, Y, z);
+    const top = box(0.6, 0.06, 0.6, navy, x1 + 0.5, Y + 0.45, z);
+    top.rotation.z = 0.12;
+  }
+
+  // bordure de plage et haie (ouverte au milieu du côté accès, +z)
+  const D = POOL_DECK;
+  const ox0 = x0 - D,
+    ox1 = x1 + D,
+    oz0 = z0 - D,
+    oz1 = z1 + D;
+  const border = new THREE.MeshStandardMaterial({ color: 0xb5ab98, roughness: 0.9 });
+  box(ox1 - ox0, 0.06, 0.4, border, (ox0 + ox1) / 2, Y - 0.02, oz0 + 0.2);
+  box(ox1 - ox0, 0.06, 0.4, border, (ox0 + ox1) / 2, Y - 0.02, oz1 - 0.2);
+  box(0.4, 0.06, oz1 - oz0, border, ox0 + 0.2, Y - 0.02, (oz0 + oz1) / 2);
+  box(0.4, 0.06, oz1 - oz0, border, ox1 - 0.2, Y - 0.02, (oz0 + oz1) / 2);
+  const hedge = (ax: number, az: number, bx: number, bz: number) => {
+    const len = Math.hypot(bx - ax, bz - az);
+    const o = box(len, 1.1, 0.8, hedgeMat, (ax + bx) / 2, Y - 0.02, (az + bz) / 2);
+    o.rotation.y = -Math.atan2(bz - az, bx - ax);
+  };
+  const hz = 0.9;
+  hedge(ox0 - hz, oz0 - hz, ox1 + hz, oz0 - hz);
+  hedge(ox0 - hz, oz0 - hz, ox0 - hz, oz1 + hz);
+  hedge(ox1 + hz, oz0 - hz, ox1 + hz, oz1 + hz);
+  const gap = Math.min(6, L / 3);
+  hedge(ox0 - hz, oz1 + hz, -gap / 2, oz1 + hz);
+  hedge(gap / 2, oz1 + hz, ox1 + hz, oz1 + hz);
+
+  // local technique / vestiaires derrière les gradins
+  const hw = Math.min(Math.max(L * 0.7, 14), 34);
+  const hz0 = oz0 - 9;
+  const wall = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.8 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x7fb6cf, roughness: 0.1, metalness: 0.3 });
+  box(hw, 3.6, 8, wall, (x0 + x1) / 2, Y, hz0);
+  box(hw * 0.9, 1.4, 0.1, glass, (x0 + x1) / 2, Y + 1.3, hz0 + 4.02);
+  box(hw + 1.2, 0.35, 9.2, navy, (x0 + x1) / 2, Y + 3.6, hz0 + 0.3);
+  box(hw * 0.3, 0.12, 0.6, new THREE.MeshStandardMaterial({ color: 0xc8d400, roughness: 0.6 }), (x0 + x1) / 2, Y + 3.95, hz0 + 4.6);
+
+  // arbres autour de l'enceinte
+  const trunk = new THREE.MeshStandardMaterial({ color: 0x7a5a3c, roughness: 1 });
+  const crowns = [0x3f7f3a, 0x4d8c3f, 0x356f33].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95 }));
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const ring = [
+    ...Array.from({ length: 6 }, (_, i) => [ox0 - 6 - rnd() * 6, oz0 + ((oz1 - oz0) * (i + 0.5)) / 6]),
+    ...Array.from({ length: 6 }, (_, i) => [ox1 + 6 + rnd() * 6, oz0 + ((oz1 - oz0) * (i + 0.5)) / 6]),
+    ...Array.from({ length: 5 }, (_, i) => [ox0 + ((ox1 - ox0) * (i + 0.5)) / 5, oz1 + 7 + rnd() * 6]),
+  ];
+  for (const [x, z] of ring) {
+    const h = 2.5 + rnd() * 2;
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, h, 6), trunk);
+    t.position.set(x, Y + h / 2, z);
+    t.castShadow = true;
+    g.add(t);
+    const c = new THREE.Mesh(new THREE.IcosahedronGeometry(1.8 + rnd() * 1.2, 1), crowns[Math.floor(rnd() * 3)]);
+    c.position.set(x, Y + h + 1.2, z);
+    c.castShadow = true;
+    g.add(c);
+  }
+  return g;
 }
