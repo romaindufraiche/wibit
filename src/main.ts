@@ -30,7 +30,8 @@ const store = new Store();
 const viewport = new Viewport(document.getElementById('viewport')!, store);
 // accès console pour démonstration / tests automatisés
 (window as any).__app = { store, viewport };
-let genParams: GenParams = { ...DEFAULT_PARAMS, seed: randomSeed() };
+// réglages du générateur par défaut : aucune option imposée (ni boucle InfinityLoop, ni grand toboggan, ni modules autonomes)
+let genParams: GenParams = { ...DEFAULT_PARAMS, loop: false, bigSlide: false, standalones: false, course: false, seed: randomSeed() };
 const play = new PlayMode(viewport, store);
 function startPlay() {
   store.select([]);
@@ -255,13 +256,6 @@ const POOL_SIZES: [number, number, string][] = [
 ];
 const SANDBOX: [number, number] = [220, 140];
 
-/** Illustrations des trois cartes de départ. */
-const MODE_ART = {
-  sandbox: `<svg viewBox="0 0 160 90"><rect width="160" height="90" fill="#7fb35a"/><path d="M18 50c0-22 26-36 62-36s64 12 64 34-28 32-64 32-62-8-62-30z" fill="#f2dcaa"/><path d="M28 50c0-16 22-28 52-28s54 10 54 26-24 24-54 24-52-6-52-22z" fill="#2f8fc4"/><rect x="58" y="42" width="34" height="5" rx="2" fill="#c8d400"/><rect x="88" y="34" width="5" height="18" rx="2" fill="#c8d400"/><rect x="52" y="52" width="16" height="5" rx="2" fill="#fff"/></svg>`,
-  pool: `<svg viewBox="0 0 160 90"><rect width="160" height="90" fill="#e3ddd0"/><rect x="22" y="16" width="116" height="58" fill="#f6f3ec"/><rect x="26" y="20" width="108" height="50" fill="#3db7dc"/><g stroke="#1b4f8a" stroke-width="1.6"><path d="M32 32.5h96M32 45h96M32 57.5h96"/></g><rect x="56" y="36" width="30" height="5" rx="2" fill="#c8d400"/><rect x="84" y="36" width="5" height="18" rx="2" fill="#c8d400"/></svg>`,
-  real: `<svg viewBox="0 0 160 90"><rect width="160" height="90" fill="#dfe8d6"/><g stroke="#fff" stroke-width="3" fill="none"><path d="M0 70L60 52 160 62M100 0l-8 90"/></g><path d="M30 30c8-14 40-18 58-8s26 30 8 40-46 8-60-2-12-18-6-30z" fill="#7cc0e3"/><path d="M80 18c-8 0-14 6-14 14 0 10 14 24 14 24s14-14 14-24c0-8-6-14-14-14z" fill="#003865"/><circle cx="80" cy="32" r="5" fill="#c8d400"/></svg>`,
-};
-
 /**
  * Créer un projet : trois cartes (bac à sable, piscine, vrai terrain) ; chacune démarre avec un
  * parc généré, prêt à ajuster. En dessous : connexion (ou accès à « Mes parcs ») et assistant.
@@ -274,18 +268,15 @@ function openStartDialog() {
     <div class="dlg-body start">
       <div class="mode-cards">
         <div class="mode-card">
-          <div class="mode-art">${MODE_ART.sandbox}</div>
           <b>Bac à sable</b><span>Un lac imaginaire pour composer librement et tester des idées.</span>
           <button class="btn primary" data-go="sandbox">Commencer</button>
         </div>
         <div class="mode-card">
-          <div class="mode-art">${MODE_ART.pool}</div>
           <b>Piscine</b><span>Un bassin carrelé aux dimensions de votre piscine.</span>
           <div class="seg pool-sizes">${POOL_SIZES.map(([, , l], i) => `<button type="button" data-p="${i}" class="${i === pool ? 'on' : ''}">${l}</button>`).join('')}</div>
           <button class="btn primary" data-go="pool">Commencer</button>
         </div>
         <div class="mode-card">
-          <div class="mode-art">${MODE_ART.real}</div>
           <b>Vrai terrain</b><span>Votre lac sur la carte, par adresse ou géolocalisation : on reprend sa vraie forme.</span>
           <button class="btn primary" data-go="real">Trouver mon site</button>
         </div>
@@ -316,10 +307,10 @@ function openStartDialog() {
     track('start_mode', { mode });
     if (mode === 'sandbox') {
       const [L, W] = SANDBOX;
-      start({ length: L, width: W, depth: 3.5, outline: naturalOutline(L, W) }, { capacity: 80, loop: true, bigSlide: true, course: false });
+      start({ length: L, width: W, depth: 3.5, outline: naturalOutline(L, W) }, { capacity: 80 });
     } else if (mode === 'pool') {
       const [L, W] = POOL_SIZES[pool];
-      start({ length: L, width: W, depth: 2, kind: 'pool' }, { capacity: Math.max(15, Math.min(90, Math.round((L * W) / 14))), loop: false, bigSlide: false, course: false });
+      start({ length: L, width: W, depth: 2, kind: 'pool' }, { capacity: Math.max(15, Math.min(90, Math.round((L * W) / 14))) });
     } else {
       dlg.close();
       void openRealSite(() => {
@@ -439,12 +430,18 @@ const LAYERS: [keyof Viewport['opts'], string][] = [
   ['zones', 'Zones de glisse et de saut'],
   ['anchors', 'Ancrages'],
   ['buoys', 'Balisage'],
+  ['decor', 'Aménagements de piscine (gradins, transats…)'],
 ];
 
 function openFlyout(name: string) {
   const el = $('#flyout');
   if (flyout === name) return closeFlyout();
   catalog.close();
+  if (viewport.decorEditing) {
+    viewport.decorEditing = false;
+    viewport.selectDecor(null);
+    viewport.refreshOverlays();
+  }
   flyout = name;
   el.innerHTML = '';
   if (name === 'site') {
@@ -455,7 +452,10 @@ function openFlyout(name: string) {
     };
     el.appendChild(real);
     el.appendChild(siteFlyout(store, () => catalog.redraw()));
-    const deco = h(`<div><h3 style="margin-top:20px">Aménagements</h3><div class="decor-add"></div><div class="note">Ajoutés devant la caméra ; cliquez dessus pour les déplacer, R pour pivoter, Suppr pour retirer. Ils n'entrent pas dans le devis.</div></div>`);
+    if (store.project.site.kind === 'pool') {
+    viewport.decorEditing = true;
+    viewport.refreshOverlays();
+    const deco = h(`<div><h3 style="margin-top:20px">Aménagements</h3><div class="decor-add"></div><div class="note">Visibles pendant que ce panneau est ouvert et en mode Play (cinématique), masqués sinon pour ne pas encombrer la conception. Cliquez dessus pour les déplacer, R pour pivoter, Suppr pour retirer. Hors devis.</div></div>`);
     const add = deco.querySelector<HTMLElement>('.decor-add')!;
     for (const [type, d] of Object.entries(DECOR) as [keyof typeof DECOR, (typeof DECOR)[keyof typeof DECOR]][]) {
       const b = h(`<button class="btn">${icon('plus', 15)} ${esc(d.name)}</button>`);
@@ -468,6 +468,7 @@ function openFlyout(name: string) {
       add.appendChild(b);
     }
     el.appendChild(deco);
+    }
   }
   if (name === 'parks' || name === 'season') {
     // « Mes parcs » : projets enregistrés et saison prochaine (stock, agrandissement) réunis
@@ -542,13 +543,9 @@ function openFlyout(name: string) {
       rl.appendChild(b);
     }
     el.appendChild(rl);
-    // modèles : ceux du type de plan d'eau affiché d'abord (piscine ou lac)
+    // modèles du mode en cours uniquement : piscine en mode piscine, lac sinon
     const isPool = store.project.site.kind === 'pool';
-    const groups: [string, typeof TEMPLATES][] = [
-      ['Modèles piscine', TEMPLATES.filter((t) => t.site.kind === 'pool')],
-      ['Modèles lac', TEMPLATES.filter((t) => t.site.kind !== 'pool')],
-    ];
-    if (!isPool) groups.reverse();
+    const groups: [string, typeof TEMPLATES][] = [[isPool ? 'Modèles piscine' : 'Modèles de parcs', TEMPLATES.filter((t) => (t.site.kind === 'pool') === isPool)]];
     for (const [title, items] of groups) {
       el.appendChild(h(`<h3 style="margin-top:18px">${title}</h3>`));
       const list = h(`<div class="tpl-list"></div>`);
@@ -604,6 +601,11 @@ function openFlyout(name: string) {
 }
 function closeFlyout() {
   flyout = null;
+  if (viewport.decorEditing) {
+    viewport.decorEditing = false;
+    viewport.selectDecor(null);
+    viewport.refreshOverlays();
+  }
   $('#flyout').hidden = true;
   refreshRail();
 }

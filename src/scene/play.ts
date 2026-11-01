@@ -136,7 +136,7 @@ export class PlayMode {
     this.viewport.scene.add(this.group);
     // pas de repères techniques pendant la lecture
     this.savedOpts = { ...this.viewport.opts };
-    Object.assign(this.viewport.opts, { grid: false, ports: false, zones: false, anchors: false, buoys: false });
+    Object.assign(this.viewport.opts, { grid: false, ports: false, zones: false, anchors: false, buoys: false, decor: true });
     this.viewport.refreshOverlays();
     this.spawn(Math.max(1, Math.round(this.capacity * this.ratio)));
     document.body.classList.add('playing');
@@ -604,6 +604,9 @@ export class PlayMode {
         break;
       }
     }
+    // piscine : hors du bassin (plage, gradins, transats), la caméra passe au-dessus des aménagements
+    const site = this.store.project.site;
+    if (site.kind === 'pool' && (Math.abs(cam.position.x) > site.length / 2 - 0.5 || Math.abs(cam.position.z) > site.width / 2 - 0.5)) cam.position.y = Math.max(cam.position.y, 6);
     cam.lookAt(look);
     this.viewport.controls.target.copy(look);
   }

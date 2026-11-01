@@ -21,6 +21,8 @@ export interface ViewOptions {
   zones: boolean;
   anchors: boolean;
   buoys: boolean;
+  /** Aménagements (gradins, transats…) : masqués pendant la conception, affichés en mode Play. */
+  decor: boolean;
 }
 
 interface ModObj {
@@ -64,7 +66,9 @@ export class Viewport {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
-  opts: ViewOptions = { grid: true, ports: true, zones: true, anchors: false, buoys: false };
+  opts: ViewOptions = { grid: true, ports: true, zones: true, anchors: false, buoys: false, decor: false };
+  /** Aménagements affichés temporairement (panneau « Aménagements » ouvert). */
+  decorEditing = false;
   onDropModule?: (type: string, x: number, z: number) => void;
   onHover?: (p: Placed | null, clientX: number, clientY: number) => void;
   /** Tracé à main levée terminé (points au sol). */
@@ -294,6 +298,7 @@ export class Viewport {
   private syncDecor() {
     const { project } = this.store;
     const y = groundY(project.site);
+    this.decorGroup.visible = this.opts.decor || this.decorEditing;
     const alive = new Set<string>();
     for (const d of project.decor ?? []) {
       alive.add(d.uid);
@@ -333,7 +338,7 @@ export class Viewport {
   }
 
   private pickDecor(e: { clientX: number; clientY: number }): string | null {
-    if (!this.decorObjs.size) return null;
+    if (!this.decorObjs.size || !this.decorGroup.visible) return null;
     this.raycaster.setFromCamera(this.ndc(e), this.camera);
     const hit = this.raycaster.intersectObjects([...this.decorObjs.values()].map((o) => o.root), true).find((h) => h.object.type === 'Mesh');
     return (hit?.object.userData.decor as string) ?? null;

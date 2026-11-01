@@ -1944,9 +1944,10 @@ body.playing::after {
 .mode-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 10px;
+  padding: 18px 16px 16px;
   border: 1px solid var(--line);
+  border-top: 4px solid var(--lime);
   border-radius: 8px;
   background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -1955,20 +1956,9 @@ body.playing::after {
   border-color: var(--navy);
   box-shadow: 0 0 0 1px var(--navy);
 }
-.mode-art {
-  border-radius: 6px;
-  overflow: hidden;
-  aspect-ratio: 16 / 9;
-}
-.mode-art svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
 .mode-card > b {
-  font: 800 17px Karla, sans-serif;
+  font: 800 19px Karla, sans-serif;
   color: var(--navy);
-  margin-top: 4px;
 }
 .mode-card > span {
   color: var(--muted);
@@ -2001,9 +1991,6 @@ body.playing::after {
 @media (max-width: 760px) {
   .mode-cards {
     grid-template-columns: 1fr;
-  }
-  .mode-art {
-    aspect-ratio: 3 / 1;
   }
 }
 .map-side .locate-btn {
