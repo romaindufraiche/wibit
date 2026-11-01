@@ -43,6 +43,7 @@ export function openSiteMap(host: SiteMapHost) {
         <div class="map-head"><h2>Mon site réel</h2><button class="icon-btn" data-a="close" title="Fermer">${icon('x', 18)}</button></div>
         <div class="map-step"><b>1</b><span>Cherchez une adresse, une commune ou un lac — ou déplacez-vous librement sur la carte.</span></div>
         <div class="search-wrap"><span>${icon('search', 16)}</span><input data-k="q" placeholder="Ex. Lac de Serre-Ponçon, Annecy…" spellcheck="false"></div>
+        <button class="btn locate-btn" data-a="locate">${icon('anchor', 15)} Me localiser</button>
         <div class="map-results"></div>
         <div class="map-step"><b>2</b><span>Cliquez sur l'eau, à l'endroit du futur parc (le point se déplace à la souris).</span></div>
         <div class="map-step"><b>3</b><span>Le contour du plan d'eau est détecté automatiquement (sinon, dessinez-le). Ses berges sont reprises dans la 3D, avec le décor habituel.</span></div>
@@ -186,6 +187,20 @@ export function openSiteMap(host: SiteMapHost) {
       const c = drawn.reduce((a, p) => [a[0] + p[0] / drawn.length, a[1] + p[1] / drawn.length], [0, 0]) as LatLon;
       setPoint(c);
     } else preview();
+  };
+
+  // géolocalisation : on centre la carte sur la position de l'appareil (sur place, au bord du lac)
+  $('[data-a=locate]').onclick = () => {
+    if (!navigator.geolocation) return status('La géolocalisation n’est pas disponible sur cet appareil.');
+    status('Localisation en cours…');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        map.setView([pos.coords.latitude, pos.coords.longitude], 17);
+        status('Vous êtes ici : cliquez sur l’eau à l’endroit du futur parc.');
+      },
+      () => status('Position indisponible : autorisez la géolocalisation, ou cherchez une adresse.'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   };
 
   // recherche d'adresse

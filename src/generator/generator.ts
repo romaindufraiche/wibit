@@ -3,7 +3,7 @@ import { angleOf, moduleOBB, obbDistance, obbOverlap, pointInOBB, snapTransform,
 import { bounds, insideSite, obbInsideSite, shoreEdges, siteOutline } from '../core/region';
 import { buildGraph } from '../core/graph';
 import type { Audience, ModuleSpec, Placed, Project, Site, Vec2 } from '../core/types';
-import { AUDIENCE_LIMITS, RULES, computeStats, validate } from '../rules/validate';
+import { AUDIENCE_LIMITS, RULES, computeStats, edgeMarginOf, validate } from '../rules/validate';
 import { hashSeed, makeRng, type Rng } from './rng';
 
 /*
@@ -196,7 +196,7 @@ export class Builder {
   /** Le module candidat (transform tf) peut-il être posé ? */
   fits(s: ModuleSpec, tf: { x: number; z: number; rot: number }, parent: string | null): boolean {
     const o = moduleOBB(tf, s);
-    if (!obbInsideSite(o, this.outline, RULES.edgeMargin)) return false;
+    if (!obbInsideSite(o, this.outline, edgeMarginOf(this.site))) return false;
     // modules auxquels le candidat se connecte (parent + fermetures de boucle)
     const linked = new Set<string>();
     if (parent) linked.add(parent);
@@ -270,7 +270,7 @@ export class Builder {
     for (let d = 0.5; d <= max; d += 0.5) {
       const x = op.x + op.dx * d,
         z = op.z + op.dz * d;
-      if (!insideSite({ x, z }, this.outline, RULES.edgeMargin)) return d;
+      if (!insideSite({ x, z }, this.outline, edgeMarginOf(this.site))) return d;
       for (const o of this.obbs.values()) {
         if (pointInOBB({ x, z }, { ...o, hx: o.hx + 1, hz: o.hz + 1 }) && d > 1.2) return d;
       }
@@ -386,7 +386,7 @@ export class Builder {
       const e = edges.find((ed) => (r -= ed.len) <= 0) ?? edges[0];
       const t = 0.2 + this.rng.next() * 0.6;
       const inward = { x: -e.n.x, z: -e.n.z };
-      const depth = RULES.edgeMargin + s.L / 2 + 0.05;
+      const depth = edgeMarginOf(this.site) + s.L / 2 + 0.05;
       const rot = angleOf(inward.x, inward.z) - angleOf(out.dx, out.dz);
       const tf = { x: e.a.x + (e.b.x - e.a.x) * t + inward.x * depth, z: e.a.z + (e.b.z - e.a.z) * t + inward.z * depth, rot };
       if (!this.canUse(type) || !this.fits(s, tf, null)) continue;

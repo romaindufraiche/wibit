@@ -10,7 +10,7 @@ import { buildTerrain } from './terrain';
 import { findSnap } from '../core/snap';
 import type { Placed } from '../core/types';
 import type { Store } from '../editor/store';
-import { RULES } from '../rules/validate';
+import { edgeMarginOf } from '../rules/validate';
 import { buildModel } from '../models/builders';
 
 export interface ViewOptions {
@@ -169,11 +169,15 @@ export class Viewport {
 
   private buildSite() {
     const { site } = this.store.project;
-    const key = JSON.stringify([site.length, site.width, site.depth, site.outline ?? null, site.shore ?? null]);
+    const key = JSON.stringify([site.kind ?? 'lake', site.length, site.width, site.depth, site.outline ?? null, site.shore ?? null]);
     if (key === this.siteKey) return;
     this.siteKey = key;
     this.siteGroup.clear();
     const terrain = buildTerrain(site);
+    // eau de piscine : turquoise et plus claire ; eau de lac : bleu profond
+    const wm = this.water.material as THREE.MeshPhysicalMaterial;
+    wm.color.set(site.kind === 'pool' ? 0x22a9d4 : 0x1677a8);
+    wm.opacity = site.kind === 'pool' ? 0.72 : 0.92;
     this.land = terrain.land;
     this.foam = terrain.foam;
     this.siteGroup.add(terrain.group);
@@ -186,7 +190,7 @@ export class Viewport {
       line.computeLineDistances();
       return line;
     };
-    this.siteGroup.add(loop(offsetPolygon(P, -RULES.edgeMargin), 0xffa000, true, 0.03));
+    this.siteGroup.add(loop(offsetPolygon(P, -edgeMarginOf(site)), 0xffa000, true, 0.03));
 
     const b = bounds(P);
     const L = b.maxX - b.minX,

@@ -153,6 +153,7 @@ export interface Terrain {
 }
 
 export function buildTerrain(site: Site): Terrain {
+  if (site.kind === 'pool') return buildPoolTerrain(site);
   const t = textures();
   // site réel : le décor suit les vraies berges, même au-delà de la zone de travail
   const P = site.shore && site.shore.length >= 3 ? site.shore : siteOutline(site);
@@ -196,4 +197,118 @@ export function buildTerrain(site: Site): Terrain {
   sand.name = grass.name = 'land';
   group.add(grass, sand, wetBand, slope, foam, bottom);
   return { group, land: [sand, grass], foam: foamMat };
+}
+
+// ------------------------------------------------------------------ piscine
+
+let poolCache: { tiles: THREE.Texture; floor: THREE.Texture; deck: THREE.Texture } | null = null;
+
+/** Carrelage (8 × 8 carreaux de 25 cm par motif de 2 m), dallage de plage (4 × 4 dalles de 50 cm). */
+function poolTextures() {
+  if (poolCache) return poolCache;
+  const tiling = (base: string, grout: string, n: number, jitter: number) =>
+    noiseCanvas(512, (ctx, rnd) => {
+      const s = 512 / n;
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < n; j++) {
+          const k = (rnd() - 0.5) * jitter;
+          ctx.fillStyle = base;
+          ctx.fillRect(i * s, j * s, s, s);
+          ctx.fillStyle = `rgba(${k > 0 ? '255,255,255' : '0,40,70'},${Math.abs(k) / 100})`;
+          ctx.fillRect(i * s, j * s, s, s);
+        }
+      ctx.strokeStyle = grout;
+      ctx.lineWidth = n > 6 ? 3 : 5;
+      for (let i = 0; i <= n; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * s, 0);
+        ctx.lineTo(i * s, 512);
+        ctx.moveTo(0, i * s);
+        ctx.lineTo(512, i * s);
+        ctx.stroke();
+      }
+    });
+  const deck = noiseCanvas(512, (ctx, rnd) => {
+    const s = 128;
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++) {
+        const k = (rnd() - 0.5) * 14;
+        ctx.fillStyle = `rgb(${226 + k},${220 + k},${208 + k})`;
+        ctx.fillRect(i * s, j * s, s, s);
+      }
+    for (let i = 0; i < 9000; i++) {
+      const k = (rnd() - 0.5) * 40;
+      ctx.fillStyle = `rgba(${200 + k},${192 + k},${178 + k},0.5)`;
+      ctx.fillRect(rnd() * 512, rnd() * 512, 1.5, 1.5);
+    }
+    ctx.strokeStyle = 'rgb(188,180,166)';
+    ctx.lineWidth = 4;
+    for (let i = 0; i <= 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * s, 0);
+      ctx.lineTo(i * s, 512);
+      ctx.moveTo(0, i * s);
+      ctx.lineTo(512, i * s);
+      ctx.stroke();
+    }
+  });
+  poolCache = { tiles: tiling('#d7f0f8', '#a9d3e2', 8, 10), floor: tiling('#bfe7f5', '#9fcfe0', 8, 8), deck };
+  return poolCache;
+}
+
+const POOL_DECK = 7; // plage dallée autour du bassin (m)
+const COPING_Y = 0.3; // margelle au-dessus de l'eau (m)
+
+/** Bassin de piscine : parois et fond carrelés, lignes de nage, margelle, plage dallée, pelouse. */
+function buildPoolTerrain(site: Site): Terrain {
+  const t = poolTextures();
+  const P = siteOutline(site);
+  const b = bounds(P);
+  const R = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) / 2 + 300;
+  const group = new THREE.Group();
+  const rect = (x0: number, z0: number, x1: number, z1: number): Vec2[] => [
+    { x: x0, z: z0 },
+    { x: x1, z: z0 },
+    { x: x1, z: z1 },
+    { x: x0, z: z1 },
+  ];
+  const tex = (src: THREE.Texture, rx: number, ry: number) => {
+    const c = src.clone();
+    c.repeat.set(rx, ry);
+    c.needsUpdate = true;
+    return c;
+  };
+  const depth = Math.min(site.depth, 6);
+
+  const grassTex = textures().grass.clone();
+  grassTex.repeat.set(1 / 14, 1 / 14);
+  grassTex.needsUpdate = true;
+  const grass = flat(rect(-R, -R, R, R), [offsetPolygon(P, POOL_DECK - 0.5)], COPING_Y - 0.02, new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 }));
+  const deck = flat(offsetPolygon(P, POOL_DECK), [offsetPolygon(P, 0.45)], COPING_Y, new THREE.MeshStandardMaterial({ map: tex(t.deck, 1 / 2, 1 / 2), roughness: 0.9 }));
+  // margelle : pierre claire légèrement en surplomb
+  const coping = flat(offsetPolygon(P, 0.45), [offsetPolygon(P, -0.05)], COPING_Y + 0.04, new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.7 }));
+  const copingEdge = band(offsetPolygon(P, -0.05), COPING_Y + 0.04, offsetPolygon(P, -0.05), COPING_Y - 0.06, new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.7, side: THREE.DoubleSide }), 1);
+  // parois carrelées
+  const wallTex = tex(t.tiles, 1 / 2, (depth + COPING_Y) / 2);
+  const walls = band(P, COPING_Y, P, -depth, new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.35, side: THREE.DoubleSide }), 1);
+  // ligne d'eau : frise de carreaux plus foncés
+  const frieze = band(offsetPolygon(P, -0.01), 0.12, offsetPolygon(P, -0.01), -0.12, new THREE.MeshStandardMaterial({ color: 0x1f6fa8, roughness: 0.4, side: THREE.DoubleSide }), 1);
+  // fond carrelé et lignes de nage (dans le sens de la longueur)
+  const floor = flat(P, [], -depth, new THREE.MeshStandardMaterial({ map: tex(t.floor, 1 / 2, 1 / 2), roughness: 0.4 }));
+  const laneMat = new THREE.MeshStandardMaterial({ color: 0x163f7a, roughness: 0.5 });
+  const L = b.maxX - b.minX,
+    W = b.maxZ - b.minZ;
+  const lanes = Math.max(2, Math.round(W / 2.5));
+  for (let i = 1; i < lanes; i++) {
+    const z = b.minZ + (W * i) / lanes;
+    const line = flat(rect(b.minX + 2, z - 0.12, b.maxX - 2, z + 0.12), [], -depth + 0.01, laneMat);
+    group.add(line);
+    // T de fin de ligne
+    for (const x of [b.minX + 2, b.maxX - 2]) group.add(flat(rect(x - 0.12, z - 0.5, x + 0.12, z + 0.5), [], -depth + 0.01, laneMat));
+  }
+  void L;
+  const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+  grass.name = deck.name = 'land';
+  group.add(grass, deck, coping, copingEdge, walls, frieze, floor);
+  return { group, land: [deck, grass], foam: foamMat };
 }

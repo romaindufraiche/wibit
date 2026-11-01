@@ -43,6 +43,8 @@ const EVENT_TYPES = new Set([
   'shore_edit',
   'real_site',
   'assistant',
+  'start_mode',
+  'recent_open',
 ]);
 const PARK_STATUSES = new Set(['draft', 'quote_requested', 'quote_sent', 'won', 'lost']);
 

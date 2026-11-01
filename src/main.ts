@@ -20,6 +20,7 @@ import { seasonFlyout } from './ui/season';
 import { account, openAuthDialog, parksFlyout, type ProjectStats } from './ui/account';
 import { initTracking, track } from './io/track';
 import { initAssistant } from './assistant/chat';
+import { loadRecent, pushRecent as pushRecentPark, thumbnail } from './io/recent';
 import { applyOverrides } from './catalog/modules';
 import { esc, h, initCatalog, renderHotbar, renderHud, renderInspector, siteFlyout, thumbs } from './ui/panels';
 
@@ -166,8 +167,22 @@ function runGenerator(params: GenParams, opts: { site?: Project['site']; name?: 
   store.setProject({ ...store.project, name: opts.name ?? `Parc ${params.seed}`, site, audience: params.audience, modules: res.modules });
   viewport.frameAll();
   track(opts.name ? 'template' : 'generate', { seed: params.seed, capacity: params.capacity, budget: params.budget ?? 0, modules: res.modules.length });
+  if (!opts.name) rememberGeneration();
   const st = store.derived.stats;
   toast(`${st.modules} modules · ${st.capacity} personnes · ${eur(st.total)}${st.loops ? ' · boucle' : ''} — variante « ${params.seed} »`);
+}
+
+/** Garde la génération affichée parmi les 3 dernières (avec une miniature), après rendu de la scène. */
+function rememberGeneration() {
+  const project = structuredClone(store.project);
+  const st = store.derived.stats;
+  requestAnimationFrame(() =>
+    requestAnimationFrame(async () => {
+      const thumb = await thumbnail(viewport.screenshot());
+      pushRecentPark({ at: Date.now(), name: project.name, modules: st.modules, capacity: st.capacity, total: st.total, thumb, project });
+      if (flyout === 'templates') (flyout = null), openFlyout('templates');
+    }),
+  );
 }
 
 function randomPark() {
@@ -226,112 +241,97 @@ function openGeneratorDialog() {
   dlg.showModal();
 }
 
-/** Tailles de lac type proposées au démarrage : [longueur, largeur, capacité visée]. */
-const LAKE_SIZES: Record<string, [number, number, number, string]> = {
-  s: [140, 90, 40, 'Petit'],
-  m: [220, 140, 80, 'Moyen'],
-  l: [320, 200, 120, 'Grand'],
-};
-const START_AUDIENCES: [Project['audience'], string][] = [
-  ['kids', 'Enfants'],
-  ['family', 'Familles'],
-  ['sport', 'Sportifs'],
-  ['mixed', 'Tout public'],
+/** Bassins de piscine proposés : [longueur, largeur, libellé]. */
+const POOL_SIZES: [number, number, string][] = [
+  [25, 12.5, '25 × 12,5 m'],
+  [25, 15, '25 × 15 m'],
+  [50, 25, '50 × 25 m'],
 ];
+const SANDBOX: [number, number] = [220, 140];
+
+/** Illustrations des trois cartes de départ. */
+const MODE_ART = {
+  sandbox: `<svg viewBox="0 0 160 90"><rect width="160" height="90" fill="#7fb35a"/><path d="M18 50c0-22 26-36 62-36s64 12 64 34-28 32-64 32-62-8-62-30z" fill="#f2dcaa"/><path d="M28 50c0-16 22-28 52-28s54 10 54 26-24 24-54 24-52-6-52-22z" fill="#2f8fc4"/><rect x="58" y="42" width="34" height="5" rx="2" fill="#c8d400"/><rect x="88" y="34" width="5" height="18" rx="2" fill="#c8d400"/><rect x="52" y="52" width="16" height="5" rx="2" fill="#fff"/></svg>`,
+  pool: `<svg viewBox="0 0 160 90"><rect width="160" height="90" fill="#e3ddd0"/><rect x="22" y="16" width="116" height="58" fill="#f6f3ec"/><rect x="26" y="20" width="108" height="50" fill="#3db7dc"/><g stroke="#1b4f8a" stroke-width="1.6"><path d="M32 32.5h96M32 45h96M32 57.5h96"/></g><rect x="56" y="36" width="30" height="5" rx="2" fill="#c8d400"/><rect x="84" y="36" width="5" height="18" rx="2" fill="#c8d400"/></svg>`,
+  real: `<svg viewBox="0 0 160 90"><rect width="160" height="90" fill="#dfe8d6"/><g stroke="#fff" stroke-width="3" fill="none"><path d="M0 70L60 52 160 62M100 0l-8 90"/></g><path d="M30 30c8-14 40-18 58-8s26 30 8 40-46 8-60-2-12-18-6-30z" fill="#7cc0e3"/><path d="M80 18c-8 0-14 6-14 14 0 10 14 24 14 24s14-14 14-24c0-8-6-14-14-14z" fill="#003865"/><circle cx="80" cy="32" r="5" fill="#c8d400"/></svg>`,
+};
 
 /**
- * Démarrage en deux questions (pour qui, où) puis un parc complet généré tout de suite.
- * Les autres façons de commencer restent accessibles en lien discret.
+ * Créer un projet : trois cartes (bac à sable, piscine, vrai terrain) ; chacune démarre avec un
+ * parc généré, prêt à ajuster. En dessous : connexion (ou accès à « Mes parcs ») et assistant.
  */
 function openStartDialog() {
   const dlg = $<HTMLDialogElement>('#start-dialog');
-  let audience: Project['audience'] = store.project.audience === 'mixed' ? 'family' : store.project.audience;
-  let where: 'type' | 'real' = 'type';
-  let size = 'm';
+  let pool = 0;
   dlg.innerHTML = `
-    <div class="dlg-head"><h2>Créons votre parc</h2><p>Deux questions, et votre parc aquatique apparaît en 3D. Vous l'ajustez ensuite librement.</p></div>
+    <div class="dlg-head"><h2>Créer un projet</h2><p>Choisissez votre terrain : un parc est proposé tout de suite, vous l'ajustez ensuite librement.</p></div>
     <div class="dlg-body start">
-      <div class="start-q"><b>1. Pour qui ?</b>
-        <div class="seg" data-seg="audience">${START_AUDIENCES.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === audience ? 'on' : ''}">${l}</button>`).join('')}</div>
-      </div>
-      <div class="start-q"><b>2. Où ?</b>
-        <div class="where">
-          <button type="button" data-w="real">${icon('waves', 22)}<span><b>Sur mon lac</b><small>Trouvez-le sur la carte : on reprend sa vraie forme.</small></span></button>
-          <button type="button" data-w="type" class="on">${icon('layout', 22)}<span><b>Sur un lac type</b><small>Pour découvrir, sans site précis.</small></span></button>
+      <div class="mode-cards">
+        <div class="mode-card">
+          <div class="mode-art">${MODE_ART.sandbox}</div>
+          <b>Bac à sable</b><span>Un lac imaginaire pour composer librement et tester des idées.</span>
+          <button class="btn primary" data-go="sandbox">Commencer</button>
         </div>
-        <div class="seg sizes" data-seg="size">${Object.entries(LAKE_SIZES).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === size ? 'on' : ''}">${v[3]} <small>${v[0]} × ${v[1]} m</small></button>`).join('')}</div>
+        <div class="mode-card">
+          <div class="mode-art">${MODE_ART.pool}</div>
+          <b>Piscine</b><span>Un bassin carrelé aux dimensions de votre piscine.</span>
+          <div class="seg pool-sizes">${POOL_SIZES.map(([, , l], i) => `<button type="button" data-p="${i}" class="${i === pool ? 'on' : ''}">${l}</button>`).join('')}</div>
+          <button class="btn primary" data-go="pool">Commencer</button>
+        </div>
+        <div class="mode-card">
+          <div class="mode-art">${MODE_ART.real}</div>
+          <b>Vrai terrain</b><span>Votre lac sur la carte, par adresse ou géolocalisation : on reprend sa vraie forme.</span>
+          <button class="btn primary" data-go="real">Trouver mon site</button>
+        </div>
       </div>
-      <button class="btn primary start-go" data-a="go">${icon('shuffle', 17)} Créer mon parc</button>
-      <div class="start-alt">Ou commencer autrement :
-        <button class="link-btn" data-a="pen">dessiner le parcours</button> ·
-        <button class="link-btn" data-a="catalog">catalogue</button> ·
-        <button class="link-btn" data-a="templates">modèles</button> ·
-        <button class="link-btn" data-a="assistant">décrire mon projet à l’assistant</button>
-        ${account.loggedIn ? '' : '<span class="start-login">Déjà un compte ? <button class="link-btn" data-a="login">Se connecter</button></span>'}
+      <div class="start-foot">
+        ${
+          account.loggedIn
+            ? `<span>Connecté : ${esc(account.user!.email)}</span><button class="btn" data-a="parks">${icon('cloud', 16)} Ouvrir un de mes parcs</button>`
+            : `<span>Déjà un compte ?</span><button class="btn" data-a="login">${icon('user', 16)} Se connecter</button>`
+        }
+        <button class="link-btn" data-a="assistant">ou décrire mon projet à l’assistant</button>
       </div>
     </div>`;
-  const sizes = dlg.querySelector<HTMLElement>('.sizes')!;
-  dlg.querySelectorAll<HTMLElement>('[data-seg]').forEach((g) =>
-    g.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-      b.onclick = () => {
-        g.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
-        b.classList.add('on');
-        if (g.dataset.seg === 'audience') audience = b.dataset.v as Project['audience'];
-        else size = b.dataset.v!;
-      };
-    }),
-  );
-  dlg.querySelectorAll<HTMLButtonElement>('[data-w]').forEach((b) => {
+  dlg.querySelectorAll<HTMLButtonElement>('[data-p]').forEach((b) => {
     b.onclick = () => {
-      where = b.dataset.w as 'type' | 'real';
-      dlg.querySelectorAll('[data-w]').forEach((x) => x.classList.toggle('on', x === b));
-      sizes.hidden = where === 'real';
+      pool = Number(b.dataset.p);
+      dlg.querySelectorAll('[data-p]').forEach((x) => x.classList.toggle('on', x === b));
     };
   });
-  /** Lac type de la taille choisie, public choisi. */
-  const prepare = () => {
-    const [length, width] = LAKE_SIZES[size];
-    store.update((p) => {
-      p.audience = audience;
-      p.site = { length, width, depth: 3.5, outline: naturalOutline(length, width) };
-    }, false);
+  const start = (site: Project['site'], params: Partial<GenParams>) => {
     dlg.close();
-    viewport.frameAll();
+    genParams = { ...genParams, audience: store.project.audience, ...params, seed: randomSeed() };
+    runGenerator(genParams, { site });
+    toast('Voici un premier parc : « Générer un parc » en propose un autre, le catalogue et le stylo permettent de l’ajuster.', 6500);
   };
-  const generate = () => {
-    genParams = { ...genParams, audience, capacity: where === 'real' ? 80 : LAKE_SIZES[size][2], seed: randomSeed() };
-    runGenerator(genParams);
-    toast('Votre parc est prêt. « Générer un parc » propose une autre version ; ajustez les modules puis demandez votre devis.', 7000);
-  };
-  dlg.querySelector<HTMLElement>('[data-a=go]')!.onclick = () => {
-    if (where === 'real') {
-      store.update((p) => (p.audience = audience), false);
+  const go = (mode: string) => {
+    track('start_mode', { mode });
+    if (mode === 'sandbox') {
+      const [L, W] = SANDBOX;
+      start({ length: L, width: W, depth: 3.5, outline: naturalOutline(L, W) }, { capacity: 80, loop: true, bigSlide: true, course: false });
+    } else if (mode === 'pool') {
+      const [L, W] = POOL_SIZES[pool];
+      start({ length: L, width: W, depth: 2, kind: 'pool' }, { capacity: Math.max(15, Math.min(90, Math.round((L * W) / 14))), loop: false, bigSlide: false, course: false });
+    } else {
       dlg.close();
-      void openRealSite(generate);
-      return;
+      void openRealSite(() => {
+        genParams = { ...genParams, audience: store.project.audience, capacity: 80, course: false, seed: randomSeed() };
+        runGenerator(genParams);
+      });
     }
-    prepare();
-    generate();
   };
-  dlg.querySelector<HTMLElement>('[data-a=pen]')!.onclick = () => {
-    prepare();
-    viewport.frameAll(true);
-    setTool('pen');
-  };
-  dlg.querySelector<HTMLElement>('[data-a=catalog]')!.onclick = () => {
-    prepare();
-    catalog.open();
-  };
-  dlg.querySelector<HTMLElement>('[data-a=templates]')!.onclick = () => {
-    prepare();
-    openFlyout('templates');
-  };
+  dlg.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) => (b.onclick = () => go(b.dataset.go!)));
   dlg.querySelector<HTMLElement>('[data-a=assistant]')!.onclick = () => {
-    store.update((p) => (p.audience = audience), false);
     dlg.close();
     viewport.frameAll();
     assistant.open();
   };
+  dlg.querySelector<HTMLElement>('[data-a=parks]')?.addEventListener('click', () => {
+    dlg.close();
+    flyout = null;
+    openFlyout('parks');
+  });
   dlg.querySelector<HTMLElement>('[data-a=login]')?.addEventListener('click', () => {
     dlg.close();
     openAuthDialog(
@@ -339,8 +339,7 @@ function openStartDialog() {
         refreshUserBtn();
         toast(`Connecté : ${account.user!.email}`);
         if (await openParkFromUrl()) return;
-        flyout = null;
-        openFlyout('parks');
+        openStartDialog();
       },
       { onCancel: openStartDialog },
     );
@@ -392,9 +391,14 @@ renderThumbnails(MODULES, (id, url) => {
 type Tool = 'select' | 'pen' | 'shore';
 let tool: Tool = 'select';
 let flyout: string | null = null;
+let parksTab: 'projects' | 'season' = 'projects';
 
 let shoreBar: HTMLElement | null = null;
 function setTool(t: Tool) {
+  if (t === 'shore' && store.project.site.kind === 'pool') {
+    toast('Un bassin de piscine reste rectangulaire : changez ses dimensions dans le panneau Plan d’eau.');
+    t = 'select';
+  }
   tool = t;
   viewport.setPenMode(t === 'pen');
   viewport.setShoreEdit(t === 'shore');
@@ -445,56 +449,80 @@ function openFlyout(name: string) {
     el.appendChild(real);
     el.appendChild(siteFlyout(store, () => catalog.redraw()));
   }
-  if (name === 'parks') {
+  if (name === 'parks' || name === 'season') {
+    // « Mes parcs » : projets enregistrés et saison prochaine (stock, agrandissement) réunis
+    if (name === 'season') parksTab = 'season';
+    flyout = 'parks';
     const draw = () => {
       el.innerHTML = '';
-      el.appendChild(
-        parksFlyout(
-          {
-            current: () => store.project,
-            stats: projectStats,
-            open: (p) => {
-              store.setProject(p);
-              viewport.frameAll();
+      const tabs = h(`<div class="flyout-tabs"><button data-t="projects" class="${parksTab === 'projects' ? 'on' : ''}">Mes projets</button><button data-t="season" class="${parksTab === 'season' ? 'on' : ''}">Saison prochaine</button></div>`);
+      tabs.querySelectorAll<HTMLElement>('[data-t]').forEach((b) => {
+        b.onclick = () => {
+          parksTab = b.dataset.t as typeof parksTab;
+          draw();
+        };
+      });
+      el.appendChild(tabs);
+      if (parksTab === 'projects') {
+        el.appendChild(
+          parksFlyout(
+            {
+              current: () => store.project,
+              stats: projectStats,
+              open: (p) => {
+                store.setProject(p);
+                viewport.frameAll();
+              },
+              toast,
+              login: () => openAuthDialog(afterLogin),
             },
-            toast,
-            login: () => openAuthDialog(afterLogin),
-          },
-          draw,
-        ),
-      );
-      refreshUserBtn();
-    };
-    draw();
-  }
-  if (name === 'season') {
-    const draw = () => {
-      el.innerHTML = '';
-      el.appendChild(
-        seasonFlyout(
-          {
-            store,
-            params: () => genParams,
-            toast,
-            frame: () => viewport.frameAll(),
-            apply: (mods, newName) => {
-              const before = new Set(store.project.modules.map((m) => m.uid));
-              const withUids = mods.map((m) => (m.uid && before.has(m.uid) ? m : { ...m, uid: store.newUid() }));
-              store.update((p) => {
-                p.modules = withUids;
-                if (newName) p.name = newName;
-              });
-              store.select(withUids.filter((m) => !before.has(m.uid)).map((m) => m.uid));
+            draw,
+          ),
+        );
+        refreshUserBtn();
+      } else {
+        el.appendChild(
+          seasonFlyout(
+            {
+              store,
+              params: () => genParams,
+              toast,
+              frame: () => viewport.frameAll(),
+              apply: (mods, newName) => {
+                const before = new Set(store.project.modules.map((m) => m.uid));
+                const withUids = mods.map((m) => (m.uid && before.has(m.uid) ? m : { ...m, uid: store.newUid() }));
+                store.update((p) => {
+                  p.modules = withUids;
+                  if (newName) p.name = newName;
+                });
+                store.select(withUids.filter((m) => !before.has(m.uid)).map((m) => m.uid));
+              },
             },
-          },
-          draw,
-        ),
-      );
+            draw,
+          ),
+        );
+      }
     };
     draw();
   }
   if (name === 'templates') {
-    el.appendChild(h(`<h3>Modèles de parcs</h3>`));
+    el.appendChild(h(`<h3>Dernières générations</h3>`));
+    const recent = loadRecent();
+    if (!recent.length) el.appendChild(h(`<div class="empty">Vos trois dernières générations aléatoires apparaîtront ici.</div>`));
+    const rl = h(`<div class="recent-list"></div>`);
+    for (const r of recent) {
+      const b = h(`<button class="recent">${r.thumb ? `<img src="${r.thumb}" alt="">` : '<span class="noimg"></span>'}<span><b>${esc(r.name)}</b><small>${r.modules} modules · ${r.capacity} pers. · ${eur(r.total)}</small><small>${new Date(r.at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span></button>`);
+      b.onclick = () => {
+        store.setProject(structuredClone(r.project));
+        account.currentParkId = null;
+        viewport.frameAll();
+        track('recent_open');
+        toast(`« ${r.name} » rouvert — Ctrl+Z pour revenir`);
+      };
+      rl.appendChild(b);
+    }
+    el.appendChild(rl);
+    el.appendChild(h(`<h3 style="margin-top:18px">Modèles de parcs</h3>`));
     const list = h(`<div class="tpl-list"></div>`);
     for (const t of TEMPLATES) {
       const b = h(`<button class="tpl"><b>${t.name}</b><span>${t.desc}<br>${t.site.length} × ${t.site.width} m · profondeur ${t.site.depth} m</span></button>`);
@@ -558,8 +586,7 @@ function refreshRail() {
     ['grid', 'Catalogue', 'C', () => (closeFlyout(), catalog.toggle()), catalog.isOpen()],
     ['layout', 'Modèles de parcs', '', () => openFlyout('templates'), flyout === 'templates'],
     ['waves', "Plan d'eau, public & GPS", '', () => openFlyout('site'), flyout === 'site'],
-    ['package', 'Mon parc & saison prochaine', '', () => openFlyout('season'), flyout === 'season'],
-    ['cloud', 'Mes parcs (compte)', '', () => openFlyout('parks'), flyout === 'parks'],
+    ['cloud', 'Mes parcs & saison prochaine', '', () => openFlyout('parks'), flyout === 'parks'],
     null,
     ['cube', 'Vue 3D', '', () => viewport.frameAll(false), false],
     ['top', 'Vue de dessus', '', () => viewport.frameAll(true), false],
@@ -738,6 +765,7 @@ const assistant = initAssistant({
   total: () => store.derived.stats.total,
   apply: (plan) => {
     genParams = { ...plan.params };
+    queueMicrotask(rememberGeneration);
     const keepName = !/^(Nouveau parc|Parc [a-zé]+-\d+)$/.test(store.project.name);
     store.setProject({ ...store.project, name: keepName ? store.project.name : `Parc ${plan.params.seed}`, site: plan.site, audience: plan.params.audience, modules: plan.modules });
     viewport.frameAll();

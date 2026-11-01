@@ -3,15 +3,20 @@ import { moduleOBB, obbCorners, obbDistance, obbOverlap, zoneOBB } from '../core
 import { obbInsideSite, siteOutline } from '../core/region';
 import { buildGraph, components, freePorts, loopCount, near, type ParkGraph } from '../core/graph';
 import { computeAnchors } from '../core/anchors';
-import type { Audience, Issue, Placed, Project, Vec2 } from '../core/types';
+import type { Audience, Issue, Placed, Project, Site, Vec2 } from '../core/types';
 
 /*
  * Moteur de règles. Chaque règle est documentée dans docs/REGLES.md (mêmes identifiants).
  * Les constantes ci-dessous sont les paramètres à valider avec Wibit.
  */
+/** Distance minimale au bord selon le type de plan d'eau. */
+export const edgeMarginOf = (site: Site) => (site.kind === 'pool' ? RULES.poolMargin : RULES.edgeMargin);
+
 export const RULES = {
   /** Distance minimale au rivage / aux bords du bassin (ISO 25649, cf. notice Boaz). */
   edgeMargin: 3,
+  /** Distance minimale aux parois d'un bassin de piscine (eau calme, parois verticales). */
+  poolMargin: 1.5,
   /** Écart minimal entre deux modules non reliés (risque de coincement). */
   minGap: 1.5,
   /** Différence de hauteur max entre deux modules reliés sans plateforme intermédiaire. */
@@ -88,8 +93,8 @@ export function validate(project: Project, graph: ParkGraph = buildGraph(project
     const s = spec(p.type);
     const o = obbs.get(p.uid)!;
     // R02 bords
-    if (!obbInsideSite(o, outline, RULES.edgeMargin)) {
-      add('R02', 'error', `${s.name} est à moins de ${RULES.edgeMargin} m du bord / rivage.`, [p.uid]);
+    if (!obbInsideSite(o, outline, edgeMarginOf(site))) {
+      add('R02', 'error', `${s.name} est à moins de ${edgeMarginOf(site)} m du bord / rivage.`, [p.uid]);
     }
     // R03 profondeur
     if (s.depth > site.depth + 1e-6) {

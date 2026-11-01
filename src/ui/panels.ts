@@ -2,7 +2,7 @@ import { CATEGORY_LABELS, MODULES, spec } from '../catalog/modules';
 import type { Audience, Category, ModuleSpec } from '../core/types';
 import type { Store } from '../editor/store';
 import { accessoryRows, eur, num } from '../io/export';
-import { AUDIENCE_LIMITS } from '../rules/validate';
+import { AUDIENCE_LIMITS, edgeMarginOf } from '../rules/validate';
 import { icon } from './icons';
 
 export const thumbs = new Map<string, string>();
@@ -269,15 +269,16 @@ export function renderInspector(store: Store, hd: InspectorHandlers) {
 
 export function siteFlyout(store: Store, onChange: () => void): HTMLElement {
   const { site, audience } = store.project;
+  const pool = site.kind === 'pool';
   const el = h(`<div>
-    <h3>Plan d'eau</h3>
+    <h3>${pool ? 'Bassin de piscine' : "Plan d'eau"}</h3>
     <div class="fields">
-      <label class="field">Longueur (rivage)<input type="number" min="15" max="400" step="1" data-k="length" value="${site.length}"></label>
-      <label class="field">Largeur<input type="number" min="15" max="400" step="1" data-k="width" value="${site.width}"></label>
+      <label class="field">Longueur${pool ? '' : ' (rivage)'}<input type="number" min="${pool ? 8 : 15}" max="400" step="${pool ? 0.5 : 1}" data-k="length" value="${site.length}"></label>
+      <label class="field">Largeur<input type="number" min="${pool ? 6 : 15}" max="400" step="${pool ? 0.5 : 1}" data-k="width" value="${site.width}"></label>
       <label class="field">Profondeur<input type="number" min="0.8" max="15" step="0.1" data-k="depth" value="${site.depth}"></label>
       <label class="field">Public<select data-k="audience">${(Object.keys(AUDIENCE_LIMITS) as Audience[]).map((a) => `<option value="${a}" ${a === audience ? 'selected' : ''}>${AUDIENCE_LIMITS[a].label}</option>`).join('')}</select></label>
     </div>
-    <div class="note">Dimensions en mètres. La plage est en bas de la scène ; la ligne orange marque la distance de sécurité de 3 m aux bords.</div>
+    <div class="note">Dimensions en mètres. ${pool ? 'L’accès se fait depuis la plage dallée en bas de la scène' : 'La plage est en bas de la scène'} ; la ligne orange marque la distance de sécurité de ${edgeMarginOf(site)} m aux bords.</div>
     <h3 style="margin-top:20px">Position GPS</h3>
     <div class="fields">
       <label class="field">Latitude (centre)<input type="number" step="0.000001" data-g="lat" value="${site.geo?.lat ?? ''}" placeholder="45.899"></label>

@@ -1720,79 +1720,6 @@ body.playing::after {
   flex-direction: column;
   gap: 18px;
 }
-.start-q {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.start-q > b {
-  font: 800 14px Karla, sans-serif;
-  color: var(--navy);
-}
-.where {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.where button {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  text-align: left;
-  padding: 14px;
-  border-radius: 6px;
-  background: #fff;
-  border: 1px solid var(--line);
-  color: var(--navy);
-}
-.where button.on {
-  border-color: var(--navy);
-  box-shadow: 0 0 0 1px var(--navy);
-  background: var(--sky);
-}
-.where button span {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.where b {
-  font-size: 15px;
-  font-weight: 800;
-}
-.where small {
-  color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 500;
-}
-.seg.sizes button small {
-  display: block;
-  font-weight: 500;
-  font-size: 11px;
-  opacity: 0.75;
-}
-.seg.sizes[hidden] {
-  display: none;
-}
-.start-go {
-  justify-content: center;
-  height: auto;
-  min-height: 46px;
-  padding: 12px;
-  font-size: 15px;
-}
-.start-alt {
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-  line-height: 1.8;
-}
-.start-alt .link-btn {
-  font-weight: 700;
-  font-size: 13px;
-}
-.start-login {
-  display: block;
-}
 .quote-fields {
   grid-template-columns: 1fr 1fr;
   margin-top: 14px;
@@ -1807,7 +1734,6 @@ body.playing::after {
   font-size: 13px;
 }
 @media (max-width: 560px) {
-  .where,
   .quote-fields {
     grid-template-columns: 1fr;
   }
@@ -2004,4 +1930,151 @@ body.playing::after {
 .brief-card .btn {
   width: 100%;
   justify-content: center;
+}
+
+/* ------------------------------------------------ créer un projet : trois cartes */
+#start-dialog {
+  width: min(880px, 96vw);
+}
+.mode-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.mode-card:hover {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 1px var(--navy);
+}
+.mode-art {
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.mode-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mode-card > b {
+  font: 800 17px Karla, sans-serif;
+  color: var(--navy);
+  margin-top: 4px;
+}
+.mode-card > span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  flex: 1;
+}
+.mode-card .btn {
+  justify-content: center;
+}
+.pool-sizes button {
+  font-size: 12px;
+  padding: 7px 2px;
+}
+.start-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.start-foot .link-btn {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+@media (max-width: 760px) {
+  .mode-cards {
+    grid-template-columns: 1fr;
+  }
+  .mode-art {
+    aspect-ratio: 3 / 1;
+  }
+}
+.map-side .locate-btn {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+/* ------------------------------------------------ dernières générations */
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.recent {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+.recent:hover {
+  border-color: var(--navy);
+  background: var(--sky);
+}
+.recent img,
+.recent .noimg {
+  width: 112px;
+  height: 63px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex: none;
+  background: #cfe3ee;
+}
+.recent span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.recent b {
+  color: var(--navy);
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.flyout-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 14px;
+  background: #eef3f7;
+  border-radius: 7px;
+}
+.flyout-tabs button {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--slate);
+}
+.flyout-tabs button.on {
+  background: #fff;
+  color: var(--navy);
+  box-shadow: 0 1px 3px rgba(0, 30, 60, 0.15);
 }
