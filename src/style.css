@@ -1713,3 +1713,102 @@ body.playing::after {
 .map-side .search-wrap {
   flex: none;
 }
+
+/* ------------------------------------------------ démarrage simplifié & devis en un formulaire */
+.dlg-body.start {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.start-q {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.start-q > b {
+  font: 800 14px Karla, sans-serif;
+  color: var(--navy);
+}
+.where {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.where button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 14px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--navy);
+}
+.where button.on {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 1px var(--navy);
+  background: var(--sky);
+}
+.where button span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.where b {
+  font-size: 15px;
+  font-weight: 800;
+}
+.where small {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.seg.sizes button small {
+  display: block;
+  font-weight: 500;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.seg.sizes[hidden] {
+  display: none;
+}
+.start-go {
+  justify-content: center;
+  height: auto;
+  min-height: 46px;
+  padding: 12px;
+  font-size: 15px;
+}
+.start-alt {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.8;
+}
+.start-alt .link-btn {
+  font-weight: 700;
+  font-size: 13px;
+}
+.start-login {
+  display: block;
+}
+.quote-fields {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 14px;
+}
+.quote-switch {
+  margin-top: 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.quote-who {
+  margin-top: 12px;
+  font-size: 13px;
+}
+@media (max-width: 560px) {
+  .where,
+  .quote-fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -8,7 +8,7 @@ import { esc } from './panels';
 /*
  * Fenêtre « Mon site réel » : on cherche une adresse ou on se déplace librement sur la carte
  * satellite, on pose un point à l'endroit du parc ; le contour réel du plan d'eau est détecté
- * (OpenStreetMap) ou dessiné à la main, puis converti en terrain 3D texturé.
+ * (OpenStreetMap) ou dessiné à la main, puis repris comme berge dans le décor 3D stylisé.
  */
 
 interface SearchResult {
@@ -31,6 +31,8 @@ export interface SiteMapHost {
   current: Site;
   onApply: (site: Site, label: string) => void;
   toast: (msg: string) => void;
+  /** Fenêtre fermée sans choisir de site. */
+  onCancel?: () => void;
 }
 
 export function openSiteMap(host: SiteMapHost) {
@@ -237,14 +239,22 @@ export function openSiteMap(host: SiteMapHost) {
     map.remove();
     dlg.close();
   };
-  $('[data-a=close]').onclick = close;
-  $('[data-a=cancel]').onclick = close;
+  const cancel = () => {
+    close();
+    host.onCancel?.();
+  };
+  $('[data-a=close]').onclick = cancel;
+  $('[data-a=cancel]').onclick = cancel;
   $('[data-a=apply]').onclick = () => {
     if (!result) return;
     const label = q.value.trim() || 'Site réel';
     host.onApply(result.site, label);
     close();
   };
-  dlg.addEventListener('cancel', () => map.remove(), { once: true });
+  // Échap : même effet qu'Annuler (affectation, pas d'écouteurs qui s'accumulent d'une ouverture à l'autre)
+  dlg.oncancel = (e) => {
+    e.preventDefault();
+    cancel();
+  };
   if (host.current.geo) setPoint([host.current.geo.lat, host.current.geo.lon]);
 }

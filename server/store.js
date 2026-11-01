@@ -3,7 +3,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-const USER_FIELDS = ['name', 'company', 'phone', 'role', 'notes', 'followup', 'disabled', 'last_seen'];
+const USER_FIELDS = ['name', 'company', 'phone', 'role', 'notes', 'followup', 'disabled', 'last_seen', 'pass'];
 const PARK_FIELDS = ['name', 'data', 'stats', 'status', 'quote'];
 const pick = (o, keys) => Object.fromEntries(Object.entries(o ?? {}).filter(([k, v]) => keys.includes(k) && v !== undefined));
 const now = () => new Date().toISOString();

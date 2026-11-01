@@ -35,13 +35,18 @@ Définir `SESSION_SECRET` (chaîne aléatoire) en production. Tests : `npm test`
 
 Administration : les comptes dont l'e-mail figure dans `ADMIN_EMAILS` (liste séparée par des virgules)
 deviennent administrateurs à leur prochaine connexion ; l'interface est sur `/admin`.
+`ADMIN_EMAIL` + `ADMIN_PASSWORD` garantissent un compte administrateur : créé au démarrage s'il
+n'existe pas, et remis sur ce mot de passe à chaque démarrage. `SEED_DEMO=1` charge les données de
+démonstration au démarrage s'il n'y en a pas encore.
 Données de démonstration (comptes fictifs `@demo.parkcraft.fr`, société suffixée « (démo) ») :
 
 ```bash
 npm run seed:demo
 ```
 
-Ajouter `-- --reset` pour supprimer d'abord les comptes de démonstration existants.
+Ajouter `-- --reset` pour supprimer d'abord les comptes de démonstration existants, ou `-- --if-empty` pour ne rien faire s'il y en a déjà.
+
+Parcours client : deux questions (pour qui, où : lac type ou vrai lac sur la carte), le parc est généré aussitôt, puis « Recevoir mon devis » en un seul formulaire (coordonnées, création du compte, message). Pas de connexion obligatoire à l'ouverture.
 
 ## Fonctionnalités
 

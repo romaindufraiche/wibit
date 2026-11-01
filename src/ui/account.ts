@@ -135,7 +135,7 @@ export const account = {
  * Fenêtre de connexion / création de compte. En mode « accueil » (à l'ouverture de l'outil),
  * elle propose aussi de continuer sans compte.
  */
-export function openAuthDialog(onDone: () => void, opts: { welcome?: boolean; onSkip?: () => void; reason?: string } = {}) {
+export function openAuthDialog(onDone: () => void, opts: { welcome?: boolean; onSkip?: () => void; onCancel?: () => void; reason?: string } = {}) {
   const dlg = document.getElementById('auth-dialog') as HTMLDialogElement;
   let mode: 'login' | 'register' = 'login';
   const draw = (err = '') => {
@@ -178,7 +178,10 @@ export function openAuthDialog(onDone: () => void, opts: { welcome?: boolean; on
         draw();
       };
     });
-    dlg.querySelector<HTMLElement>('[data-a=cancel]')?.addEventListener('click', () => dlg.close());
+    dlg.querySelector<HTMLElement>('[data-a=cancel]')?.addEventListener('click', () => {
+      dlg.close();
+      opts.onCancel?.();
+    });
     dlg.querySelector<HTMLElement>('[data-a=skip]')?.addEventListener('click', () => {
       dlg.close();
       opts.onSkip?.();

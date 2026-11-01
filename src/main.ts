@@ -1,4 +1,4 @@
-import { APP_NAME, APP_TAGLINE } from './brand';
+import { APP_NAME } from './brand';
 import { MODULES, spec } from './catalog/modules';
 import { attachTo, findSnap, freeSpot } from './core/snap';
 import type { Placed, Project } from './core/types';
@@ -225,53 +225,128 @@ function openGeneratorDialog() {
   dlg.showModal();
 }
 
+/** Tailles de lac type proposées au démarrage : [longueur, largeur, capacité visée]. */
+const LAKE_SIZES: Record<string, [number, number, number, string]> = {
+  s: [140, 90, 40, 'Petit'],
+  m: [220, 140, 80, 'Moyen'],
+  l: [320, 200, 120, 'Grand'],
+};
+const START_AUDIENCES: [Project['audience'], string][] = [
+  ['kids', 'Enfants'],
+  ['family', 'Familles'],
+  ['sport', 'Sportifs'],
+  ['mixed', 'Tout public'],
+];
+
+/**
+ * Démarrage en deux questions (pour qui, où) puis un parc complet généré tout de suite.
+ * Les autres façons de commencer restent accessibles en lien discret.
+ */
 function openStartDialog() {
   const dlg = $<HTMLDialogElement>('#start-dialog');
-  const site = { ...store.project.site };
+  let audience: Project['audience'] = store.project.audience === 'mixed' ? 'family' : store.project.audience;
+  let where: 'type' | 'real' = 'type';
+  let size = 'm';
   dlg.innerHTML = `
-    <div class="dlg-head"><h2>Nouveau parc</h2><p>${APP_TAGLINE}. Indiquez votre plan d'eau, puis choisissez comment commencer.</p></div>
-    <div class="dlg-body">
-      <div class="fields" style="grid-template-columns:1fr 1fr 1fr">
-        <label class="field">Longueur (m)<input type="number" data-k="length" value="${site.length}" min="15" max="400"></label>
-        <label class="field">Largeur (m)<input type="number" data-k="width" value="${site.width}" min="15" max="400"></label>
-        <label class="field">Profondeur (m)<input type="number" data-k="depth" value="${site.depth}" min="0.8" max="15" step="0.1"></label>
+    <div class="dlg-head"><h2>Créons votre parc</h2><p>Deux questions, et votre parc aquatique apparaît en 3D. Vous l'ajustez ensuite librement.</p></div>
+    <div class="dlg-body start">
+      <div class="start-q"><b>1. Pour qui ?</b>
+        <div class="seg" data-seg="audience">${START_AUDIENCES.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === audience ? 'on' : ''}">${l}</button>`).join('')}</div>
       </div>
-      <div class="start-grid">
-        <button data-a="random">${icon('shuffle', 22)}<b>Générer un parc</b><span>Un parc complet et cohérent, prêt à ajuster.</span></button>
-        <button data-a="pen">${icon('pen', 22)}<b>Dessiner le parcours</b><span>Tracez une ligne, les modules s'y posent.</span></button>
-        <button data-a="catalog">${icon('grid', 22)}<b>Partir du catalogue</b><span>Placez les modules un par un.</span></button>
-        <button data-a="templates">${icon('layout', 22)}<b>Modèles de parcs</b><span>Kids Lagoon, Family Beach, SportsPark…</span></button>
-        <button data-a="real" class="wide">${icon('waves', 22)}<b>Partir de mon site réel</b><span>Une adresse ou un point sur la carte satellite : le vrai contour du lac et la photo aérienne deviennent le terrain 3D.</span></button>
+      <div class="start-q"><b>2. Où ?</b>
+        <div class="where">
+          <button type="button" data-w="real">${icon('waves', 22)}<span><b>Sur mon lac</b><small>Trouvez-le sur la carte : on reprend sa vraie forme.</small></span></button>
+          <button type="button" data-w="type" class="on">${icon('layout', 22)}<span><b>Sur un lac type</b><small>Pour découvrir, sans site précis.</small></span></button>
+        </div>
+        <div class="seg sizes" data-seg="size">${Object.entries(LAKE_SIZES).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === size ? 'on' : ''}">${v[3]} <small>${v[0]} × ${v[1]} m</small></button>`).join('')}</div>
+      </div>
+      <button class="btn primary start-go" data-a="go">${icon('shuffle', 17)} Créer mon parc</button>
+      <div class="start-alt">Ou commencer autrement :
+        <button class="link-btn" data-a="pen">dessiner le parcours</button> ·
+        <button class="link-btn" data-a="catalog">catalogue</button> ·
+        <button class="link-btn" data-a="templates">modèles</button>
+        ${account.loggedIn ? '' : '<span class="start-login">Déjà un compte ? <button class="link-btn" data-a="login">Se connecter</button></span>'}
       </div>
     </div>`;
-  const go = (fn: () => void) => () => {
-    dlg.querySelectorAll<HTMLInputElement>('[data-k]').forEach((i) => ((site as any)[i.dataset.k!] = Math.max(Number(i.min), Math.min(Number(i.max), Number(i.value) || 0))));
-    // nouvelles dimensions : contour naturel redessiné à la bonne taille
-    store.update((p) => (p.site = { ...site, outline: naturalOutline(site.length, site.width) }), false);
+  const sizes = dlg.querySelector<HTMLElement>('.sizes')!;
+  dlg.querySelectorAll<HTMLElement>('[data-seg]').forEach((g) =>
+    g.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.onclick = () => {
+        g.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        if (g.dataset.seg === 'audience') audience = b.dataset.v as Project['audience'];
+        else size = b.dataset.v!;
+      };
+    }),
+  );
+  dlg.querySelectorAll<HTMLButtonElement>('[data-w]').forEach((b) => {
+    b.onclick = () => {
+      where = b.dataset.w as 'type' | 'real';
+      dlg.querySelectorAll('[data-w]').forEach((x) => x.classList.toggle('on', x === b));
+      sizes.hidden = where === 'real';
+    };
+  });
+  /** Lac type de la taille choisie, public choisi. */
+  const prepare = () => {
+    const [length, width] = LAKE_SIZES[size];
+    store.update((p) => {
+      p.audience = audience;
+      p.site = { length, width, depth: 3.5, outline: naturalOutline(length, width) };
+    }, false);
     dlg.close();
     viewport.frameAll();
-    fn();
   };
-  dlg.querySelector<HTMLElement>('[data-a=random]')!.onclick = go(randomPark);
-  dlg.querySelector<HTMLElement>('[data-a=pen]')!.onclick = go(() => {
+  const generate = () => {
+    genParams = { ...genParams, audience, capacity: where === 'real' ? 80 : LAKE_SIZES[size][2], seed: randomSeed() };
+    runGenerator(genParams);
+    toast('Votre parc est prêt. « Générer un parc » propose une autre version ; ajustez les modules puis demandez votre devis.', 7000);
+  };
+  dlg.querySelector<HTMLElement>('[data-a=go]')!.onclick = () => {
+    if (where === 'real') {
+      store.update((p) => (p.audience = audience), false);
+      dlg.close();
+      void openRealSite(generate);
+      return;
+    }
+    prepare();
+    generate();
+  };
+  dlg.querySelector<HTMLElement>('[data-a=pen]')!.onclick = () => {
+    prepare();
     viewport.frameAll(true);
     setTool('pen');
-  });
-  dlg.querySelector<HTMLElement>('[data-a=catalog]')!.onclick = go(() => catalog.open());
-  dlg.querySelector<HTMLElement>('[data-a=templates]')!.onclick = go(() => openFlyout('templates'));
-  dlg.querySelector<HTMLElement>('[data-a=real]')!.onclick = () => {
-    dlg.close();
-    void openRealSite();
   };
+  dlg.querySelector<HTMLElement>('[data-a=catalog]')!.onclick = () => {
+    prepare();
+    catalog.open();
+  };
+  dlg.querySelector<HTMLElement>('[data-a=templates]')!.onclick = () => {
+    prepare();
+    openFlyout('templates');
+  };
+  dlg.querySelector<HTMLElement>('[data-a=login]')?.addEventListener('click', () => {
+    dlg.close();
+    openAuthDialog(
+      async () => {
+        refreshUserBtn();
+        toast(`Connecté : ${account.user!.email}`);
+        if (await openParkFromUrl()) return;
+        flyout = null;
+        openFlyout('parks');
+      },
+      { onCancel: openStartDialog },
+    );
+  });
   dlg.showModal();
 }
 
-/** Carte : adresse ou point -> contour réel du plan d'eau + imagerie satellite comme terrain. */
-async function openRealSite() {
+/** Carte : adresse ou point -> contour réel du plan d'eau (décor 3D stylisé). `then` : suite (ex. générer). */
+async function openRealSite(then?: () => void) {
   const { openSiteMap } = await import('./ui/sitemap');
   openSiteMap({
     current: store.project.site,
     toast,
+    onCancel: then ? openStartDialog : undefined,
     onApply: (site, label) => {
       store.update((p) => {
         p.site = site;
@@ -279,6 +354,7 @@ async function openRealSite() {
       });
       viewport.frameAll(true);
       track('real_site', { label });
+      if (then) return then();
       const outside = store.derived.issues.filter((i) => i.rule === 'R02').length;
       toast(outside ? `Site réel chargé : ${outside} module(s) hors de l’eau, à déplacer ou régénérer.` : 'Site réel chargé : générez ou dessinez votre parc sur le vrai plan d’eau.');
     },
@@ -566,41 +642,83 @@ nameInput.onchange = () => store.update((p) => (p.name = nameInput.value || 'Par
 
 // ------------------------------------------------ demande de devis
 
-/** Le client demande un devis : le parc est enregistré dans son compte puis transmis à l'équipe commerciale. */
+/**
+ * Le client demande un devis, en un seul formulaire : coordonnées (création du compte au passage,
+ * pour retrouver son projet), message, envoi. Le parc est enregistré puis transmis à l'équipe commerciale.
+ */
 function requestQuote() {
   if (!store.project.modules.length) return toast('Construisez d’abord votre parc.');
-  if (!account.loggedIn) {
-    openAuthDialog(
-      () => {
-        refreshUserBtn();
-        requestQuote();
-      },
-      { reason: 'Créez votre compte pour recevoir votre devis personnalisé : nos équipes reprennent votre projet et vous recontactent.' },
-    );
-    return;
-  }
   const dlg = $<HTMLDialogElement>('#quote-dialog');
   const st = store.derived.stats;
   const errors = store.derived.issues.filter((i) => i.level === 'error').length;
-  dlg.innerHTML = `
-    <div class="dlg-head"><h2>Demander un devis</h2><p>Nos équipes reprennent « ${esc(store.project.name)} », vérifient l'implantation et vous envoient un devis personnalisé.</p></div>
+  let mode: 'register' | 'login' = 'register';
+  let msg = '';
+  let email = '';
+  const draw = (err = '') => {
+    const guest = !account.loggedIn;
+    dlg.innerHTML = `
+    <form method="dialog" class="quote-form">
+    <div class="dlg-head"><h2>Recevoir mon devis</h2><p>Nos équipes reprennent « ${esc(store.project.name)} », vérifient l'implantation et vous envoient un devis personnalisé.</p></div>
     <div class="dlg-body">
       <div class="quote-sum"><div><b>${st.modules}</b><span>modules</span></div><div><b>${st.capacity}</b><span>personnes</span></div><div><b>${eur(st.total)}</b><span>estimation HT</span></div></div>
       ${errors ? `<div class="form-error">${errors} point${errors > 1 ? 's' : ''} de règles à corriger : nos équipes vous aideront à les résoudre.</div>` : ''}
-      <label class="field" style="margin-top:14px">Votre message (dates, contraintes du site, questions…)<textarea rows="4" data-k="msg" placeholder="Ouverture souhaitée en juin, accès camion par le parking nord…"></textarea></label>
+      ${
+        guest
+          ? `<div class="fields quote-fields">
+          ${
+            mode === 'register'
+              ? `<label class="field">Nom<input name="name" autocomplete="name" required></label>
+                 <label class="field">Société / site<input name="company" autocomplete="organization" placeholder="Base nautique, camping…"></label>
+                 <label class="field">E-mail<input name="email" type="email" autocomplete="email" required></label>
+                 <label class="field">Téléphone<input name="phone" type="tel" autocomplete="tel"></label>
+                 <label class="field full">Mot de passe <small class="muted">(pour retrouver votre projet)</small><input name="password" type="password" minlength="8" autocomplete="new-password" required></label>`
+              : `<label class="field">E-mail<input name="email" type="email" autocomplete="email" required></label>
+                 <label class="field">Mot de passe<input name="password" type="password" autocomplete="current-password" required></label>`
+          }
+        </div>
+        <button type="button" class="link-btn quote-switch" data-a="switch">${mode === 'register' ? 'J’ai déjà un compte' : 'Créer un compte'}</button>`
+          : `<div class="muted quote-who">Envoyé au nom de ${esc(account.user!.name || account.user!.email)} (${esc(account.user!.email)})</div>`
+      }
+      <label class="field" style="margin-top:12px">Votre message <small class="muted">(facultatif)</small><textarea rows="3" name="msg" placeholder="Ouverture souhaitée en juin, accès camion par le parking nord…">${esc(msg)}</textarea></label>
+      ${err ? `<div class="form-error">${esc(err)}</div>` : ''}
     </div>
-    <div class="dlg-foot"><button class="btn" data-a="cancel">Annuler</button><button class="btn primary" data-a="send">Envoyer la demande</button></div>`;
-  dlg.querySelector<HTMLElement>('[data-a=cancel]')!.onclick = () => dlg.close();
-  dlg.querySelector<HTMLElement>('[data-a=send]')!.onclick = async () => {
-    try {
-      const id = await account.save(store.project, false, projectStats());
-      await account.quoteRequest(id, dlg.querySelector<HTMLTextAreaElement>('[data-k=msg]')!.value);
-      dlg.close();
-      toast('Demande envoyée : nous revenons vers vous très vite.');
-    } catch (e) {
-      toast(`Envoi impossible : ${(e as Error).message}`);
-    }
+    <div class="dlg-foot"><button type="button" class="btn" data-a="cancel">Annuler</button><button type="submit" class="btn primary">Envoyer ma demande</button></div>
+    </form>`;
+    const form = dlg.querySelector('form')!;
+    const emailIn = form.elements.namedItem('email') as HTMLInputElement | null;
+    if (emailIn) emailIn.value = email;
+    dlg.querySelector<HTMLElement>('[data-a=cancel]')!.onclick = () => dlg.close();
+    dlg.querySelector<HTMLElement>('[data-a=switch]')?.addEventListener('click', () => {
+      msg = (form.elements.namedItem('msg') as HTMLTextAreaElement).value;
+      email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      mode = mode === 'register' ? 'login' : 'register';
+      draw();
+    });
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const v = (k: string) => String(fd.get(k) ?? '');
+      msg = v('msg');
+      email = v('email');
+      const send = form.querySelector<HTMLButtonElement>('[type=submit]')!;
+      send.disabled = true;
+      try {
+        if (!account.loggedIn) {
+          await account.auth(mode, v('email'), v('password'), { name: v('name'), company: v('company'), phone: v('phone') });
+          refreshUserBtn();
+        }
+        const id = await account.save(store.project, false, projectStats());
+        await account.quoteRequest(id, msg);
+        dlg.close();
+        toast('Demande envoyée : nous revenons vers vous très vite. Votre projet est enregistré dans votre compte.', 6000);
+      } catch (er) {
+        const m = (er as Error).message;
+        if (/existe déjà/.test(m)) mode = 'login';
+        draw(/existe déjà/.test(m) ? 'Un compte existe déjà avec cette adresse : saisissez votre mot de passe.' : m);
+      }
+    };
   };
+  draw();
   dlg.showModal();
 }
 
@@ -845,14 +963,5 @@ refreshUI();
   await account.refresh();
   refreshUserBtn();
   if (await openParkFromUrl()) return;
-  if (account.loggedIn || location.hash.startsWith('#p=')) return openWorkspace();
-  // fenêtre de connexion à l'ouverture
-  openAuthDialog(
-    () => {
-      refreshUserBtn();
-      toast(`Connecté : ${account.user!.email}`);
-      openWorkspace();
-    },
-    { welcome: true, onSkip: openWorkspace },
-  );
+  openWorkspace();
 })();

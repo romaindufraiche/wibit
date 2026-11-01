@@ -185,7 +185,7 @@ export function renderHud(store: Store, onPick: (uids: string[]) => void, onQuot
     el.appendChild(list);
   }
   if (st.modules) {
-    const q = h(`<div class="hud-cta"><button class="btn primary">Demander un devis</button></div>`);
+    const q = h(`<div class="hud-cta"><button class="btn primary">Recevoir mon devis</button></div>`);
     q.querySelector('button')!.onclick = onQuote;
     el.appendChild(q);
   }

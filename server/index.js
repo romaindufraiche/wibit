@@ -1,5 +1,6 @@
 // Serveur Parkcraft : fichiers statiques (dist/) + API comptes, parcs, activité et administration.
 import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
 import { createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { readFile, stat } from 'node:fs/promises';
@@ -342,8 +343,32 @@ async function serveStatic(req, res, path) {
   }
 }
 
+// Données de démonstration (SEED_DEMO=1) : comptes fictifs @demo.parkcraft.fr, ajoutés seulement s'il n'y en a pas déjà.
+if (process.env.SEED_DEMO === '1') {
+  try {
+    execFileSync(join(ROOT, 'node_modules', '.bin', 'vite-node'), [join(ROOT, 'scripts', 'seed-demo.ts'), '--if-empty'], { cwd: ROOT, stdio: 'inherit', timeout: 180000 });
+  } catch (e) {
+    console.error('Données de démonstration non chargées :', e.message);
+  }
+}
+
 const store = process.env.DATABASE_URL ? await pgStore(process.env.DATABASE_URL) : fileStore(ROOT);
 await store.init();
+
+/**
+ * Compte administrateur garanti (ADMIN_EMAIL + ADMIN_PASSWORD) : créé s'il n'existe pas, remis
+ * administrateur et resynchronisé sur le mot de passe configuré à chaque démarrage.
+ */
+async function ensureAdmin() {
+  const email = (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase();
+  const pw = process.env.ADMIN_PASSWORD ?? '';
+  if (!email || pw.length < 8) return;
+  ADMIN_EMAILS.add(email);
+  const u = await store.userByEmail(email);
+  if (!u) await store.createUser({ email, name: 'Administrateur', company: '', phone: '', pass: await hashPassword(pw), role: 'admin' });
+  else if (u.role !== 'admin' || u.disabled || !(await checkPassword(pw, u.pass))) await store.updateUser(u.id, { role: 'admin', disabled: false, pass: await hashPassword(pw) });
+}
+await ensureAdmin();
 
 createServer(async (req, res) => {
   const path = new URL(req.url ?? '/', 'http://x').pathname;

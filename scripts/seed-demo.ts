@@ -5,7 +5,8 @@
  *   npx vite-node scripts/seed-demo.ts            (fichier data/db.json)
  *   DATABASE_URL=... npx vite-node scripts/seed-demo.ts
  *
- * Relancer le script ajoute de nouveaux comptes démo ; « --reset » supprime d'abord les anciens.
+ * Relancer le script ajoute de nouveaux comptes démo ; « --reset » supprime d'abord les anciens ;
+ * « --if-empty » ne fait rien s'il existe déjà des comptes démo (chargement au démarrage du serveur).
  */
 import { randomBytes, scrypt as scryptCb } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -39,6 +40,10 @@ const PEOPLE: [string, string][] = [
 async function main() {
   const store = process.env.DATABASE_URL ? await pgStore(process.env.DATABASE_URL) : fileStore(join(import.meta.dirname ?? '.', '..'));
   await store.init();
+  if (process.argv.includes('--if-empty') && (await store.listUsers()).some((u: { email: string }) => u.email.endsWith('@demo.parkcraft.fr'))) {
+    console.log('Comptes de démonstration déjà présents.');
+    process.exit(0);
+  }
   if (process.argv.includes('--reset')) {
     for (const u of await store.listUsers()) if (u.email.endsWith('@demo.parkcraft.fr')) await store.deleteUser(u.id);
   }
