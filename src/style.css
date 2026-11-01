@@ -1966,3 +1966,42 @@ body.playing::after {
     width: auto;
   }
 }
+.assistant-propose {
+  margin: 0 12px 8px;
+  justify-content: center;
+  height: auto;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+.brief-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.brief-card > b {
+  display: block;
+  font: 800 13px Karla, sans-serif;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.brief-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  margin: 0 0 10px;
+  font-size: 12.5px;
+}
+.brief-card dt {
+  color: var(--muted);
+}
+.brief-card dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 600;
+}
+.brief-card .btn {
+  width: 100%;
+  justify-content: center;
+}

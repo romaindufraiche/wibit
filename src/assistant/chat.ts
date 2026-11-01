@@ -3,12 +3,13 @@ import type { GenParams } from '../generator/generator';
 import { randomSeed } from '../generator/rng';
 import { icon } from '../ui/icons';
 import { esc } from '../ui/panels';
-import { HELP, parseRequest, type Action, type Brief } from './intent';
+import { EXPLICIT, HELP, eurFmt, norm, parseRequest, type Action, type Brief } from './intent';
 import { briefFrom, planPark, type PlanResult } from './planner';
 
 /*
- * Assistant de conception : le client écrit sa demande (« budget 500 000 €, 200 personnes,
- * parcours chronométré »), l'assistant règle le générateur, crée le parc et le résume.
+ * Assistant de conception : on discute du projet (budget, personnes, public, envies…), l'assistant
+ * rassemble le cahier des charges au fil de l'échange, pose les questions qui manquent, puis
+ * propose le parc (bouton « Proposer ce parc » ou demande explicite) et le résume.
  * Compréhension par Claude côté serveur quand il est configuré, sinon par l'analyseur local.
  */
 
@@ -33,6 +34,29 @@ const EXAMPLES = [
   'Un petit parc pour enfants, budget 150 000 €',
 ];
 const FOLLOW_UPS = ['Une autre version', 'Moins cher', 'Plus grand', 'Plus facile', 'Recevoir mon devis'];
+const AUD: Record<Brief['audience'], string> = { kids: 'Enfants', family: 'Familles', sport: 'Sportif (ados / adultes)', mixed: 'Tout public' };
+
+/** Question suivante quand une information clé manque. */
+function nextQuestion(known: Set<string>): { q: string; chips: string[] } | null {
+  if (!known.has('capacity')) return { q: 'Combien de personnes voulez-vous accueillir en même temps ?', chips: ['50 personnes', '100 personnes', '150 personnes', '200 personnes'] };
+  if (!known.has('audience')) return { q: 'Pour quel public ?', chips: ['Enfants', 'Familles', 'Sportifs', 'Tout public'] };
+  if (!known.has('budget')) return { q: 'Avez-vous un budget ?', chips: ['Budget 150 000 €', 'Budget 300 000 €', 'Budget 500 000 €', 'Sans limite de budget'] };
+  return null;
+}
+
+/** Cahier des charges en clair (fiche affichée dans la conversation). */
+function briefLines(b: Brief, known: Set<string>): [string, string][] {
+  const rows: [string, string][] = [];
+  rows.push(['Public', known.has('audience') ? AUD[b.audience] : `${AUD[b.audience]} (par défaut)`]);
+  rows.push(['Personnes', known.has('capacity') ? `${b.capacity} en même temps` : `${b.capacity} (par défaut)`]);
+  rows.push(['Budget', b.budget > 0 ? `${eurFmt(b.budget)} HT max.` : b.budget === -1 ? '−20 % sur le parc actuel' : 'sans limite']);
+  rows.push(['Intensité', `${b.intensity}/5`]);
+  const opts = [b.course ? 'parcours chronométré' : '', b.loop && !b.course ? 'boucle InfinityLoop' : '', b.bigSlide ? 'grand toboggan' : '', b.standalones ? 'modules autonomes' : ''].filter(Boolean);
+  rows.push(['Envies', opts.length ? opts.join(', ') : 'aucune en particulier']);
+  if (b.lake) rows.push(["Plan d'eau", `${b.lake.length} × ${b.lake.width} m`]);
+  if (b.depth) rows.push(['Profondeur', `${b.depth} m`]);
+  return rows;
+}
 
 export function initAssistant(host: ChatHost) {
   const fab = document.createElement('button');
@@ -46,6 +70,7 @@ export function initAssistant(host: ChatHost) {
     <header><div><b>Assistant</b><span>Décrivez votre projet, je conçois le parc.</span></div><button class="icon-btn" data-a="close" title="Fermer">${icon('x', 17)}</button></header>
     <div class="assistant-log" aria-live="polite"></div>
     <div class="assistant-chips"></div>
+    <button type="button" class="btn primary assistant-propose" data-a="propose">${icon('shuffle', 16)}<span>Proposer un parc d’après notre échange</span></button>
     <form class="assistant-form"><textarea rows="2" placeholder="Ex. : budget 500 000 €, 200 personnes, parcours chronométré…" maxlength="600"></textarea><button class="btn primary" type="submit" title="Envoyer">${icon('chevron', 17)}</button></form>`;
   document.body.append(fab, panel);
 
@@ -55,7 +80,13 @@ export function initAssistant(host: ChatHost) {
   const input = form.querySelector('textarea')!;
   const history: Msg[] = [];
   let brief: Brief | null = null;
+  /** Réglages donnés par le client pendant la conversation. */
+  const known = new Set<string>();
+  /** Un parc a déjà été proposé dans cette conversation : les retouches le régénèrent directement. */
+  let proposed = false;
   let busy = false;
+  const proposeBtn = panel.querySelector<HTMLButtonElement>('[data-a=propose]')!;
+  const currentBrief = () => brief ?? { ...briefFrom(host.params()), audience: host.project().audience };
 
   const scroll = () => (log.scrollTop = log.scrollHeight);
   const say = (role: Msg['role'], lines: string[] | string, record = true) => {
@@ -83,7 +114,7 @@ export function initAssistant(host: ChatHost) {
     panel.hidden = false;
     fab.hidden = true;
     if (!log.childElementCount) {
-      say('assistant', ['Bonjour ! Dites-moi ce que vous imaginez : budget, nombre de personnes, public, envies (toboggan, parcours chronométré…). Je conçois le parc en 3D.'], false);
+      say('assistant', ['Bonjour ! Parlons de votre projet : budget, nombre de personnes, public, envies (toboggan, parcours chronométré…). Quand vous êtes prêt, je vous propose un parc en 3D.'], false);
       setChips(EXAMPLES);
     }
     input.focus();
@@ -96,7 +127,7 @@ export function initAssistant(host: ChatHost) {
   panel.querySelector<HTMLElement>('[data-a=close]')!.onclick = close;
 
   /** Compréhension par le serveur (Claude) ; null si indisponible. */
-  async function remote(message: string, current: Brief): Promise<{ brief: Brief; action: Action | 'answer'; reply: string } | null> {
+  async function remote(message: string, current: Brief): Promise<{ brief: Brief; action: Action | 'answer'; reply: string; keys: string[] } | null> {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 20000);
     try {
@@ -124,13 +155,54 @@ export function initAssistant(host: ChatHost) {
       if (L && W) b.lake = { length: L, width: W };
       const d = num(c.depth, 0.8, 15);
       if (d) b.depth = d;
-      return { brief: b, action: res.action, reply: res.reply };
+      const keys = Object.entries(c)
+        .filter(([, v]) => v !== null && v !== undefined)
+        .map(([k]) => (k === 'lakeLength' || k === 'lakeWidth' ? 'lake' : k));
+      return { brief: b, action: res.action, reply: res.reply, keys };
     } catch {
       return null;
     } finally {
       clearTimeout(timer);
     }
   }
+
+  /** Fiche récapitulative + bouton « Proposer ce parc ». */
+  function showBrief(b: Brief, lines: string[]) {
+    const el = say('assistant', lines);
+    const card = document.createElement('div');
+    card.className = 'brief-card';
+    card.innerHTML = `<b>Votre cahier des charges</b><dl>${briefLines(b, known)
+      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
+      .join('')}</dl><button type="button" class="btn primary">${icon('shuffle', 15)} Proposer ce parc</button>`;
+    card.querySelector('button')!.onclick = () => proposeBtn.click();
+    el.appendChild(card);
+    scroll();
+  }
+
+  /** Génère le parc d'après tout ce qui a été dit dans la conversation. */
+  async function propose(intro: string[] = []) {
+    const b = currentBrief();
+    const thinking = say('assistant', [...intro, 'Je conçois le parc d’après notre échange…'], false);
+    proposeBtn.disabled = true;
+    await new Promise((r) => setTimeout(r, 30)); // laisser le message s'afficher avant le calcul
+    const plan = planPark(b, host.project(), randomSeed(), host.total());
+    thinking.remove();
+    if (plan.ok) {
+      brief = { ...b, budget: plan.params.budget ?? 0, lake: undefined };
+      host.apply(plan);
+      proposed = true;
+      proposeBtn.querySelector('span')!.textContent = 'Proposer une autre version';
+    }
+    say('assistant', [...intro, ...plan.summary, ...(plan.ok ? ['Le parc est affiché en 3D. Dites-moi ce qu’il faut changer, ou demandez votre devis.'] : [])]);
+    setChips(plan.ok ? FOLLOW_UPS : EXAMPLES);
+    host.track('assistant', { action: 'propose', capacity: b.capacity, budget: b.budget });
+    proposeBtn.disabled = false;
+  }
+  proposeBtn.onclick = () => {
+    if (busy) return;
+    busy = true;
+    void propose().finally(() => (busy = false));
+  };
 
   async function send(text: string) {
     text = text.trim();
@@ -141,51 +213,53 @@ export function initAssistant(host: ChatHost) {
     say('user', text);
     const typing = say('assistant', '…', false);
     typing.classList.add('typing');
-    const current = brief ?? { ...briefFrom(host.params()), audience: host.project().audience };
+    const current = currentBrief();
     let next: Brief;
     let action: Action | 'answer';
     let intro: string[];
+    let keys: string[];
     const ai = await remote(text, current);
     if (ai) {
       next = ai.brief;
       action = ai.action;
       intro = ai.reply ? [ai.reply] : [];
+      keys = ai.keys;
     } else {
       const it = parseRequest(text, current);
       next = it.brief;
       action = it.action;
-      intro = it.understood.length ? [`Compris : ${it.understood.join(', ')}.`] : [];
+      intro = it.understood.length ? [`C’est noté : ${it.understood.join(', ')}.`] : [];
+      keys = it.keys;
     }
     typing.remove();
+    for (const k of keys) known.add(k);
+    const explicit = EXPLICIT.test(norm(text));
     host.track('assistant', { action, mode: ai ? 'claude' : 'local' });
 
     if (action === 'help') {
       say('assistant', HELP);
       setChips(EXAMPLES);
     } else if (action === 'real_site') {
-      say('assistant', [...intro, 'Ouvrons la carte : cherchez votre lac et posez un point à l’endroit du parc. Je reprendrai ensuite vos réglages.']);
+      say('assistant', [...intro, 'Ouvrons la carte : cherchez votre lac et posez un point à l’endroit du parc. Ensuite, « Proposer un parc » le conçoit sur ce lac.']);
       host.openRealSite();
-      setChips(['Génère le parc sur ce lac']);
     } else if (action === 'quote') {
       say('assistant', [...intro, 'Je vous ouvre la demande de devis : nos équipes reprennent ce parc et vous recontactent.']);
       host.requestQuote();
-    } else if (action === 'generate' || action === 'variant') {
-      const thinking = say('assistant', [...intro, 'Je conçois le parc…'], false);
-      // laisser le navigateur afficher le message avant le calcul
-      await new Promise((r) => setTimeout(r, 30));
-      const plan = planPark(next, host.project(), randomSeed(), host.total());
-      thinking.remove();
-      if (plan.ok) {
-        brief = { ...next, budget: plan.params.budget ?? 0, lake: undefined };
-        host.apply(plan);
-      }
-      say('assistant', [...intro, ...plan.summary]);
-      setChips(plan.ok ? FOLLOW_UPS : EXAMPLES);
+    } else if (action === 'variant' || ((action === 'generate' || keys.length) && (explicit || proposed)) || (explicit && action !== 'answer')) {
+      // demande explicite, autre version, ou retouche d'un parc déjà proposé : on (re)génère
+      brief = next;
+      await propose(intro);
+    } else if (keys.length || action === 'generate') {
+      // la conversation avance : récapitulatif, question suivante, bouton « Proposer ce parc »
+      brief = next;
+      const q = nextQuestion(known);
+      showBrief(next, [...intro, q ? q.q : 'J’ai tout ce qu’il me faut. Je vous propose le parc ?']);
+      setChips(q ? q.chips : ['Oui, propose-moi le parc']);
     } else if (action === 'answer' && intro.length) {
       say('assistant', intro);
-      setChips(FOLLOW_UPS);
+      setChips(proposed ? FOLLOW_UPS : EXAMPLES);
     } else {
-      say('assistant', ['Je n’ai pas bien saisi. Indiquez par exemple un budget, un nombre de personnes ou le public visé.', `Exemple : « ${EXAMPLES[0]} ».`]);
+      say('assistant', ['Je n’ai pas bien saisi. Indiquez par exemple un budget, un nombre de personnes ou le public visé — ou cliquez « Proposer un parc » pour partir de ce que nous avons déjà.', `Exemple : « ${EXAMPLES[0]} ».`]);
       setChips(EXAMPLES);
     }
     busy = false;

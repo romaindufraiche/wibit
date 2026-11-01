@@ -51,3 +51,14 @@ describe('assistant : du brief au parc', () => {
     expect(plan.site.length).toBeGreaterThanOrEqual(420);
   });
 });
+
+describe('assistant : conversation', () => {
+  it('retient les réglages donnés et repère une demande explicite', () => {
+    const r = parseRequest('Pour 150 personnes, plutôt des familles', base);
+    expect(r.keys.sort()).toEqual(['audience', 'capacity']);
+    expect(r.explicit).toBe(false);
+    expect(parseRequest('Vas-y, propose-moi un parc', base).explicit).toBe(true);
+    expect(parseRequest('Oui, propose-moi le parc', base).explicit).toBe(true);
+    expect(parseRequest('Je veux un parc pour 200 personnes', base).explicit).toBe(false);
+  });
+});
