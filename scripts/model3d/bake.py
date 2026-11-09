@@ -7,7 +7,7 @@ from scipy import ndimage
 from scipy.spatial import cKDTree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from convert_triposr import WIBIT, HUES, align  # noqa: E402
-from finish import DIST, SIZE, project, rebuild, silhouette_iou  # noqa: E402
+from finish import DIST, SIZE, project, silhouette_iou  # noqa: E402
 
 NAMES = list(WIBIT)
 PAL = np.array([WIBIT[k] for k in NAMES], np.float32)
@@ -32,7 +32,32 @@ def classify(rgb):
     return out
 
 
-def bake(raw_path, img_path, faces=20000, tex=1024):
+def rebuild(mesh, res=192):
+    """
+    Surface propre, fermée et lisse : voxelisation pleine, ouverture (supprime voiles, lambeaux et
+    artefacts internes), fermeture (bouche les creux parasites), puis isosurface d'un champ très lissé :
+    l'aspect d'une toile gonflée et tendue.
+    """
+    from skimage.measure import marching_cubes
+    pitch = mesh.extents.max() / res
+    vox = mesh.voxelized(pitch).fill()
+    pad = 8
+    occ = np.pad(vox.matrix.astype(bool), pad)
+    ball = ndimage.generate_binary_structure(3, 2)
+    occ = ndimage.binary_opening(occ, structure=ball, iterations=2)
+    occ = ndimage.binary_closing(occ, structure=ball, iterations=2)
+    occ = ndimage.binary_fill_holes(occ)
+    lab, n = ndimage.label(occ)
+    if n > 1:
+        sizes = ndimage.sum(occ, lab, range(1, n + 1))
+        occ = np.isin(lab, 1 + np.flatnonzero(sizes > 0.03 * sizes.max()))
+    field = ndimage.gaussian_filter(occ.astype(np.float32), 1.8)
+    verts, faces_, _, _ = marching_cubes(field, 0.5)
+    origin = vox.transform[:3, 3] - pad * pitch
+    return trimesh.Trimesh(vertices=verts * pitch + origin, faces=faces_[:, ::-1], process=True)
+
+
+def bake(raw_path, img_path, faces=30000, tex=2048):
     raw = trimesh.load(raw_path, process=False)
     raw_tree = cKDTree(raw.vertices)
     raw_cls = classify(np.asarray(raw.visual.vertex_colors[:, :3]))
@@ -41,7 +66,7 @@ def bake(raw_path, img_path, faces=20000, tex=1024):
     if len(mesh.faces) > faces:
         v2, f2 = fast_simplification.simplify(mesh.vertices.astype(np.float32), mesh.faces.astype(np.int32), target_reduction=1 - faces / len(mesh.faces))
         mesh = trimesh.Trimesh(vertices=v2, faces=f2, process=True)
-    trimesh.smoothing.filter_taubin(mesh, lamb=0.5, nu=-0.53, iterations=6)
+    trimesh.smoothing.filter_taubin(mesh, lamb=0.5, nu=-0.53, iterations=10)
     # dépliage UV
     import xatlas
     vmap, idx, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
@@ -103,12 +128,21 @@ def bake(raw_path, img_path, faces=20000, tex=1024):
     lab[filled] = cls
     vis = np.zeros((T, T), bool)
     vis[filled] = visible
-    fine = np.stack([ndimage.uniform_filter((lab == k).astype(np.float32), 3) for k in range(len(NAMES))], -1).argmax(-1)
-    coarse = np.stack([ndimage.uniform_filter((lab == k).astype(np.float32), 15) for k in range(len(NAMES))], -1).argmax(-1)
-    lab2 = np.where(filled, np.where(vis, fine, coarse), -1)
+    K = len(NAMES)
+    def mode(lbl, size):
+        return np.stack([ndimage.uniform_filter((lbl == k).astype(np.float32), size) for k in range(K)], -1).argmax(-1)
+    big = [NAMES.index(k) for k in ('yellow', 'green', 'blue')]
+    # grands aplats (jaune, vert, bleu) : contours adoucis ; faces cachées : très lissées
+    base = np.where(vis, mode(lab, 9), mode(lab, 21))
+    base = np.where(np.isin(base, big) | ~vis, base, mode(lab, 5))
+    # détails sur la face visible (logos, prises, cordes, numéros) : gardés nets
+    fine = mode(lab, 3)
+    detail = vis & ~np.isin(fine, big) & (ndimage.uniform_filter((lab == fine).astype(np.float32), 3) > 0.55)
+    lab2 = np.where(filled, np.where(detail, fine, base), -1)
     _, ind = ndimage.distance_transform_edt(lab2 < 0, return_indices=True)
     lab2 = lab2[ind[0], ind[1]]
     img = PAL[lab2].astype(np.uint8)
+    img = np.asarray(Image.fromarray(img).resize((T // 2, T // 2), Image.LANCZOS))
     texture = Image.fromarray(img).transpose(Image.FLIP_TOP_BOTTOM)
     textured = trimesh.Trimesh(vertices=V, faces=F, process=False)
     textured.visual = trimesh.visual.TextureVisuals(uv=uvs, material=trimesh.visual.material.PBRMaterial(baseColorTexture=texture, metallicFactor=0.0, roughnessFactor=0.45))

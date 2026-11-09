@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import type { ModuleSpec } from '../core/types';
 
 /*
@@ -59,9 +60,9 @@ function normalize(scene: THREE.Object3D, s: ModuleSpec, rotY = 0): THREE.Group 
   inner.rotation.y = rot;
   box = new THREE.Box3().setFromObject(inner);
   size = box.getSize(new THREE.Vector3());
-  // échelle uniforme : l'emprise tient dans L × W et la hauteur ne dépasse pas la hauteur officielle (+15 %)
-  const k = Math.min(s.L / Math.max(size.x, 1e-3), s.W / Math.max(size.z, 1e-3), (s.H * 1.15) / Math.max(size.y, 1e-3));
-  inner.scale.setScalar(k);
+  // modèle normalisé aux dimensions officielles du module : longueur, largeur et hauteur exactes
+  // (les reconstructions 3D n'ont pas d'échelle propre ; on évite aussi qu'un modèle déborde de son emprise)
+  inner.scale.set(s.L / Math.max(size.x, 1e-3), s.H / Math.max(size.y, 1e-3), s.W / Math.max(size.z, 1e-3));
   box = new THREE.Box3().setFromObject(inner);
   const c = box.getCenter(new THREE.Vector3());
   inner.position.set(-c.x, -box.min.y - 0.15, -c.z);
@@ -78,7 +79,8 @@ export async function loadRealModels(specOf: (id: string) => ModuleSpec | null, 
   } catch {
     return;
   }
-  const loader = new GLTFLoader();
+  // modèles compressés (géométrie meshopt, textures WebP : ~250 Ko par module)
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const ids = Object.keys(manifest);
   if (!ids.length) return;
   await Promise.all(

@@ -8,16 +8,20 @@ Chaque module du catalogue a un rendu produit officiel (`src/catalog/references.
 (`work/raw/<id>.ply`) pour pouvoir refaire la finition sans relancer le réseau (~25 s par module sur 4 cœurs).
 
 **2. Finition et texture** (`bake.py`, ~10 s par module) :
-- surface reconstruite proprement : voxelisation pleine, suppression des voiles et lambeaux trop fins,
-  isosurface lissée (aspect gonflable tendu), simplification à 20 000 faces ;
-- dépliage UV (xatlas) et texture 1024 × 1024 peinte en projetant le rendu officiel depuis la caméra
+- surface reconstruite proprement : voxelisation pleine, ouverture et fermeture morphologiques (voiles,
+  lambeaux et artefacts internes supprimés), isosurface d'un champ très lissé (aspect gonflable tendu),
+  simplification à 30 000 faces ;
+- dépliage UV (xatlas) et texture peinte en 2048 puis réduite en 1024 (bords anticrénelés) en projetant le rendu officiel depuis la caméra
   d'entrée de TripoSR (logos, prises, cordes, numéros), avec un test de visibilité ; les faces cachées
   prennent les couleurs reconstruites, fortement lissées ;
-- toutes les couleurs ramenées à la palette officielle Wibit (jaune, vert, bleu, rouge, blanc, gris, noir) ;
+- toutes les couleurs ramenées à la palette officielle Wibit (jaune, vert, bleu, rouge, blanc, gris, noir) :
+  grands aplats aux contours adoucis, détails (logos, prises, cordes) gardés nets ;
 - inclinaison de la prise de vue corrigée (~30°), emprise alignée sur les axes, face documentée tournée
   vers l'avant, posé à la ligne d'eau.
 
-`finish.py` est la variante sans texture (couleurs par sommet).
+`finish.py` est la variante sans texture (couleurs par sommet). `batch.sh` enchaîne finition, compression
+(glTF-Transform : géométrie meshopt, textures WebP, ~200 Ko par module) et la liste `public/models/index.json`.
+Dans l'application, chaque modèle est mis exactement aux dimensions officielles du module (longueur, largeur, hauteur).
 
 ```bash
 git clone --depth 1 https://github.com/VAST-AI-Research/TripoSR scripts/model3d/TripoSR
