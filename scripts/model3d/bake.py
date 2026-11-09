@@ -32,6 +32,39 @@ def classify(rgb):
     return out
 
 
+def sharpen(mesh, normal_iters=40, vertex_iters=15, sigma_r=0.55):
+    """
+    Débruitage qui préserve les arêtes (filtrage bilatéral des normales de faces, puis mise à jour des
+    sommets) : faces planes vraiment planes, arêtes et plis nets, bruit de reconstruction retiré.
+    """
+    F = mesh.faces
+    V = mesh.vertices.copy()
+    adj = mesh.face_adjacency
+    i, j = np.concatenate([adj[:, 0], adj[:, 1]]), np.concatenate([adj[:, 1], adj[:, 0]])
+    area = mesh.area_faces
+    edge = mesh.edges_unique_length.mean()
+    sigma_s = 2.0 * edge
+    N = mesh.face_normals.copy()
+    for _ in range(normal_iters):
+        C = V[F].mean(1)
+        ws = np.exp(-((C[i] - C[j]) ** 2).sum(1) / (2 * sigma_s ** 2))
+        wr = np.exp(-((N[i] - N[j]) ** 2).sum(1) / (2 * sigma_r ** 2))
+        w = area[j] * ws * wr
+        acc = N * area[:, None]
+        np.add.at(acc, i, N[j] * w[:, None])
+        N = acc / (np.linalg.norm(acc, axis=1, keepdims=True) + 1e-12)
+    for _ in range(vertex_iters):
+        C = V[F].mean(1)
+        disp = np.zeros_like(V)
+        cnt = np.zeros(len(V))
+        for k in range(3):
+            d = (N * ((C - V[F[:, k]]) * N).sum(1, keepdims=True))
+            np.add.at(disp, F[:, k], d)
+            np.add.at(cnt, F[:, k], 1)
+        V += disp / np.maximum(cnt, 1)[:, None]
+    return trimesh.Trimesh(vertices=V, faces=F, process=False)
+
+
 def rebuild(mesh, res=192):
     """
     Surface propre, fermée et lisse : voxelisation pleine, ouverture (supprime voiles, lambeaux et
@@ -44,14 +77,14 @@ def rebuild(mesh, res=192):
     pad = 8
     occ = np.pad(vox.matrix.astype(bool), pad)
     ball = ndimage.generate_binary_structure(3, 2)
-    occ = ndimage.binary_opening(occ, structure=ball, iterations=2)
-    occ = ndimage.binary_closing(occ, structure=ball, iterations=2)
+    occ = ndimage.binary_opening(occ, structure=ball, iterations=1)
+    occ = ndimage.binary_closing(occ, structure=ball, iterations=1)
     occ = ndimage.binary_fill_holes(occ)
     lab, n = ndimage.label(occ)
     if n > 1:
         sizes = ndimage.sum(occ, lab, range(1, n + 1))
         occ = np.isin(lab, 1 + np.flatnonzero(sizes > 0.03 * sizes.max()))
-    field = ndimage.gaussian_filter(occ.astype(np.float32), 1.8)
+    field = ndimage.gaussian_filter(occ.astype(np.float32), 1.25)
     verts, faces_, _, _ = marching_cubes(field, 0.5)
     origin = vox.transform[:3, 3] - pad * pitch
     return trimesh.Trimesh(vertices=verts * pitch + origin, faces=faces_[:, ::-1], process=True)
@@ -66,7 +99,8 @@ def bake(raw_path, img_path, faces=30000, tex=2048):
     if len(mesh.faces) > faces:
         v2, f2 = fast_simplification.simplify(mesh.vertices.astype(np.float32), mesh.faces.astype(np.int32), target_reduction=1 - faces / len(mesh.faces))
         mesh = trimesh.Trimesh(vertices=v2, faces=f2, process=True)
-    trimesh.smoothing.filter_taubin(mesh, lamb=0.5, nu=-0.53, iterations=10)
+    trimesh.smoothing.filter_taubin(mesh, lamb=0.5, nu=-0.53, iterations=6)
+    mesh = sharpen(mesh)
     # dépliage UV
     import xatlas
     vmap, idx, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)

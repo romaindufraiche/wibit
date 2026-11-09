@@ -9,8 +9,8 @@ Chaque module du catalogue a un rendu produit officiel (`src/catalog/references.
 
 **2. Finition et texture** (`bake.py`, ~10 s par module) :
 - surface reconstruite proprement : voxelisation pleine, ouverture et fermeture morphologiques (voiles,
-  lambeaux et artefacts internes supprimés), isosurface d'un champ très lissé (aspect gonflable tendu),
-  simplification à 30 000 faces ;
+  lambeaux et artefacts internes supprimés), isosurface d'un champ légèrement lissé, simplification à
+  30 000 faces, puis filtrage bilatéral des normales (faces planes vraiment planes, arêtes et plis nets) ;
 - dépliage UV (xatlas) et texture peinte en 2048 puis réduite en 1024 (bords anticrénelés) en projetant le rendu officiel depuis la caméra
   d'entrée de TripoSR (logos, prises, cordes, numéros), avec un test de visibilité ; les faces cachées
   prennent les couleurs reconstruites, fortement lissées ;
