@@ -1,10 +1,354 @@
 {
- "guardtower": {
-  "file": "guardtower.glb",
-  "source": "TripoSR"
+ "actionloop": {
+  "file": "actionloop.glb",
+  "source": "TripoSR + texture projet\u00e9e"
  },
  "actiontower-xl": {
   "file": "actiontower-xl.glb",
-  "source": "TripoSR"
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "actiontower-xxl": {
+  "file": "actiontower-xxl.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "balancebar-l": {
+  "file": "balancebar-l.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "balancebar-s": {
+  "file": "balancebar-s.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "balancebeam": {
+  "file": "balancebeam.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "base-sus": {
+  "file": "base-sus.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "base": {
+  "file": "base.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "battlelogs": {
+  "file": "battlelogs.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "bend": {
+  "file": "bend.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "bouncer-xxl": {
+  "file": "bouncer-xxl.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "bridge": {
+  "file": "bridge.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "cliff": {
+  "file": "cliff.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "comeback-sus": {
+  "file": "comeback-sus.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "cornerswing": {
+  "file": "cornerswing.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "curve": {
+  "file": "curve.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "deck3": {
+  "file": "deck3.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "dipbars": {
+  "file": "dipbars.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "dome": {
+  "file": "dome.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "doublecurve": {
+  "file": "doublecurve.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "doublerocker": {
+  "file": "doublerocker.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "endrise": {
+  "file": "endrise.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "flip": {
+  "file": "flip.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "gapjump": {
+  "file": "gapjump.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "guardtower": {
+  "file": "guardtower.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "hangshake": {
+  "file": "hangshake.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "highbars": {
+  "file": "highbars.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "highroller": {
+  "file": "highroller.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "hop": {
+  "file": "hop.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "hurdle": {
+  "file": "hurdle.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "icetower-xxl": {
+  "file": "icetower-xxl.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "junction": {
+  "file": "junction.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "l-connect-sus": {
+  "file": "l-connect-sus.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "launchgate": {
+  "file": "launchgate.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "ledge": {
+  "file": "ledge.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "level-r-connect": {
+  "file": "level-r-connect.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "levelpass": {
+  "file": "levelpass.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "logroll": {
+  "file": "logroll.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "matchball": {
+  "file": "matchball.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "matchballarena": {
+  "file": "matchballarena.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "monkeybars": {
+  "file": "monkeybars.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "mountain": {
+  "file": "mountain.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "multiclimb": {
+  "file": "multiclimb.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "overclimb": {
+  "file": "overclimb.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "parcour-l-connect": {
+  "file": "parcour-l-connect.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "peak": {
+  "file": "peak.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "plank": {
+  "file": "plank.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "pologoal": {
+  "file": "pologoal.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "powerhurdle": {
+  "file": "powerhurdle.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "quarterpipe": {
+  "file": "quarterpipe.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "quickjump-l": {
+  "file": "quickjump-l.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "quickjump": {
+  "file": "quickjump.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "r-connect-sus": {
+  "file": "r-connect-sus.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "rodeosplash": {
+  "file": "rodeosplash.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "roundabout": {
+  "file": "roundabout.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "sidekick": {
+  "file": "sidekick.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "slide": {
+  "file": "slide.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "slope": {
+  "file": "slope.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "speedslide": {
+  "file": "speedslide.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "spin": {
+  "file": "spin.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "springboard": {
+  "file": "springboard.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "startgate-sus": {
+  "file": "startgate-sus.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "step": {
+  "file": "step.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "step6": {
+  "file": "step6.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "stepslide": {
+  "file": "stepslide.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "swing": {
+  "file": "swing.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "swingaround": {
+  "file": "swingaround.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "t-connect-sus": {
+  "file": "t-connect-sus.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "takeoff": {
+  "file": "takeoff.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "target": {
+  "file": "target.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "targetjump": {
+  "file": "targetjump.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "trampoline-2": {
+  "file": "trampoline-2.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "trampoline-4": {
+  "file": "trampoline-4.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "triplejump": {
+  "file": "triplejump.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "triplescore": {
+  "file": "triplescore.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "turn-sus": {
+  "file": "turn-sus.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "twist": {
+  "file": "twist.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "v-connect": {
+  "file": "v-connect.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "volley": {
+  "file": "volley.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "watcharound": {
+  "file": "watcharound.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "watchraft": {
+  "file": "watchraft.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "watchspot": {
+  "file": "watchspot.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "watchtopper": {
+  "file": "watchtopper.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "wave": {
+  "file": "wave.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "wiggleboard": {
+  "file": "wiggleboard.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "wigglebridge": {
+  "file": "wigglebridge.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "y-connect": {
+  "file": "y-connect.glb",
+  "source": "TripoSR + texture projet\u00e9e"
+ },
+ "zigzag": {
+  "file": "zigzag.glb",
+  "source": "TripoSR + texture projet\u00e9e"
  }
 }

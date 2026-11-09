@@ -216,4 +216,7 @@ draw();
 void loadRealModels(
   (id) => MODULES.find((m) => m.id === id) ?? null,
   () => undefined,
-).finally(() => renderShots(() => document.body.classList.add('ready')));
+).finally(() => {
+  draw(); // étiquettes « 3D reconstruite » une fois les modèles chargés
+  renderShots(() => document.body.classList.add('ready'));
+});

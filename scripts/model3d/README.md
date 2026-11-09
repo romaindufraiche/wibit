@@ -19,7 +19,9 @@ Chaque module du catalogue a un rendu produit officiel (`src/catalog/references.
   gardés nets ; reflets de la photo ramenés à leur teinte ; faces cachées en aplats des trois teintes
   principales ; petites taches absorbées par leur entourage ; plaques rouges denses (texte fondu) retirées ;
 - assise plate à la ligne d'eau (4 % inférieurs aplanis) ;
-- inclinaison de la prise de vue corrigée (~30°), emprise alignée sur les axes, face documentée tournée
+- position du module choisie d'après sa fiche (`dims.json` : longueur, largeur, hauteur du catalogue) :
+  l'inclinaison retenue est celle dont les proportions collent à la fiche (indispensable pour les modules
+  plats, vus presque par la tranche) ; emprise alignée sur les axes, face documentée tournée
   vers l'avant, posé à la ligne d'eau.
 
 `finish.py` est la variante sans texture (couleurs par sommet). `batch.sh` enchaîne finition, compression

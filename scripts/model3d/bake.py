@@ -6,7 +6,8 @@ from PIL import Image
 from scipy import ndimage
 from scipy.spatial import cKDTree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from convert_triposr import WIBIT, HUES, align  # noqa: E402
+from convert_triposr import WIBIT, HUES, _rot, align  # noqa: E402
+import json
 from finish import DIST, SIZE, project, silhouette_iou  # noqa: E402
 
 NAMES = list(WIBIT)
@@ -90,7 +91,53 @@ def rebuild(mesh, res=192):
     return trimesh.Trimesh(vertices=verts * pitch + origin, faces=faces_[:, ::-1], process=True)
 
 
-def bake(raw_path, img_path, faces=30000, tex=2048):
+DIMS = {}
+_dims_path = os.environ.get('MODULE_DIMS', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dims.json'))
+if os.path.exists(_dims_path):
+    for row in json.load(open(_dims_path)):
+        DIMS[row[0]] = (row[2], row[3], row[4])  # L, W, H
+
+
+def _aligned_extents(v):
+    """Emprise alignée (lacet optimal) : (long, court, hauteur)."""
+    best = None
+    for deg in np.arange(0, 90, 5.0):
+        p = v @ _rot([0, 1, 0], deg).T
+        ex, ey, ez = np.ptp(p[:, 0]), np.ptp(p[:, 1]), np.ptp(p[:, 2])
+        if best is None or ex * ez < best[0]:
+            best = (ex * ez, max(ex, ez), min(ex, ez), ey)
+    return best[1:]
+
+
+def orient_by_dims(mesh, dims):
+    """
+    Bonne position du module d'après sa fiche (L, l, H) : parmi les inclinaisons possibles (±90° autour des
+    axes horizontaux), celle dont les proportions (hauteur / longueur, largeur / longueur) collent le mieux,
+    à compacité égale. Indispensable pour les modules plats, vus presque par la tranche sur les rendus.
+    """
+    L, W, H = dims
+    R1, R2 = H / max(L, W), min(L, W) / max(L, W)
+    v = mesh.vertices[np.random.default_rng(0).choice(len(mesh.vertices), min(2000, len(mesh.vertices)), replace=False)]
+    def cost(ax, az):
+        R = _rot([0, 0, 1], az) @ _rot([1, 0, 0], ax)
+        lo, sh, h = _aligned_extents(v @ R.T)
+        e = np.log(max(h / lo, 1e-3) / R1) ** 2 + 0.5 * np.log(max(sh / lo, 1e-3) / R2) ** 2
+        return e + 0.02 * (abs(ax - 30) + abs(az)) / 30  # à égalité, l'inclinaison attendue (~30°) l'emporte
+    best = (1e9, 30.0, 0.0)
+    for ax in np.arange(-90, 91, 10):
+        for az in np.arange(-90, 91, 10):
+            c = cost(ax, az)
+            if c < best[0]:
+                best = (c, ax, az)
+    for ax in np.arange(best[1] - 8, best[1] + 9, 2):
+        for az in np.arange(best[2] - 8, best[2] + 9, 2):
+            c = cost(ax, az)
+            if c < best[0]:
+                best = (c, ax, az)
+    return best[1], best[2]
+
+
+def bake(raw_path, img_path, faces=30000, tex=2048, dims=None):
     raw = trimesh.load(raw_path, process=False)
     raw_tree = cKDTree(raw.vertices)
     raw_cls = classify(np.asarray(raw.visual.vertex_colors[:, :3]))
@@ -204,7 +251,14 @@ def bake(raw_path, img_path, faces=30000, tex=2048):
     texture = Image.fromarray(img).transpose(Image.FLIP_TOP_BOTTOM)
     textured = trimesh.Trimesh(vertices=V, faces=F, process=False)
     textured.visual = trimesh.visual.TextureVisuals(uv=uvs, material=trimesh.visual.material.PBRMaterial(baseColorTexture=texture, metallicFactor=0.0, roughnessFactor=0.45))
-    textured = align(textured, cam=(DIST, 0.0, 0.0))
+    tilt = None
+    if dims:
+        # mêmes rotations initiales que align (repère y en haut), puis inclinaison choisie d'après la fiche
+        probe = textured.copy()
+        probe.apply_transform(trimesh.transformations.rotation_matrix(-math.pi / 2, [1, 0, 0]))
+        probe.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+        tilt = orient_by_dims(probe, dims)
+    textured = align(textured, cam=(DIST, 0.0, 0.0), tilt=tilt)
     # assise plate : le dessous (4 % de la hauteur) est aplani sur la ligne d'eau
     v = textured.vertices.copy()
     floor = 0.04 * textured.extents[1]
@@ -224,7 +278,7 @@ if __name__ == '__main__':
             continue
         t0 = time.time()
         try:
-            mesh, info = bake(f'{work}/raw/{f}', f'{work}/input/{mid}.png')
+            mesh, info = bake(f'{work}/raw/{f}', f'{work}/input/{mid}.png', dims=DIMS.get(mid))
             mesh.export(f'{dst}/{mid}.glb', include_normals=True)
             info['s'] = round(time.time() - t0, 1)
             print(mid, info, flush=True)

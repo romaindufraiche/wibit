@@ -120,7 +120,7 @@ def _box_volume(v):
     return best
 
 
-def align(mesh, cam=None):
+def align(mesh, cam=None, tilt=None):
     """Y vers le haut, inclinaison de la prise de vue corrigée, emprise alignée sur les axes, longueur sur x, posé en y = 0."""
     mats = [trimesh.transformations.rotation_matrix(-math.pi / 2, [1, 0, 0]), trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0])]
     for M in mats:
@@ -128,7 +128,7 @@ def align(mesh, cam=None):
     v = mesh.vertices[np.random.default_rng(0).choice(len(mesh.vertices), min(2500, len(mesh.vertices)), replace=False)]
     # inclinaison : rotations autour des deux axes horizontaux (±45°) qui rendent la boîte englobante la plus compacte
     best = (_box_volume(v), 0.0, 0.0)
-    for step, span in ((5, 45), (1, 5)):
+    for step, span in (() if tilt is not None else ((5, 45), (1, 5))):
         cx, cz = best[1], best[2]
         for ax_deg in np.arange(cx - span, cx + span + 0.1, step):
             for az_deg in np.arange(cz - span, cz + span + 0.1, step):
@@ -136,6 +136,8 @@ def align(mesh, cam=None):
                 vol = _box_volume(v @ R.T)
                 if vol < best[0] * 0.999:
                     best = (vol, ax_deg, az_deg)
+    if tilt is not None:
+        best = (0, tilt[0], tilt[1])
     T = np.eye(4)
     T[:3, :3] = _rot([0, 0, 1], best[2]) @ _rot([1, 0, 0], best[1])
     mesh.apply_transform(T)
