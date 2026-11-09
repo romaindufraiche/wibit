@@ -120,10 +120,11 @@ def _box_volume(v):
     return best
 
 
-def align(mesh):
+def align(mesh, cam=None):
     """Y vers le haut, inclinaison de la prise de vue corrigée, emprise alignée sur les axes, longueur sur x, posé en y = 0."""
-    mesh.apply_transform(trimesh.transformations.rotation_matrix(-math.pi / 2, [1, 0, 0]))
-    mesh.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+    mats = [trimesh.transformations.rotation_matrix(-math.pi / 2, [1, 0, 0]), trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0])]
+    for M in mats:
+        mesh.apply_transform(M)
     v = mesh.vertices[np.random.default_rng(0).choice(len(mesh.vertices), min(2500, len(mesh.vertices)), replace=False)]
     # inclinaison : rotations autour des deux axes horizontaux (±45°) qui rendent la boîte englobante la plus compacte
     best = (_box_volume(v), 0.0, 0.0)
@@ -138,6 +139,7 @@ def align(mesh):
     T = np.eye(4)
     T[:3, :3] = _rot([0, 0, 1], best[2]) @ _rot([1, 0, 0], best[1])
     mesh.apply_transform(T)
+    mats.append(T)
     xz = mesh.vertices[:, [0, 2]]
     yaw = (1e18, 0)
     for deg in np.arange(0, 90, 1.0):
@@ -148,10 +150,19 @@ def align(mesh):
         if area < yaw[0]:
             yaw = (area, t)
     mesh.apply_transform(trimesh.transformations.rotation_matrix(yaw[1], [0, 1, 0]))
+    mats.append(trimesh.transformations.rotation_matrix(yaw[1], [0, 1, 0]))
     print('  inclinaison corrigée :', round(best[1]), '°,', round(best[2]), '°', flush=True)
     ext = mesh.extents
     if ext[2] > ext[0]:
         mesh.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+        mats.append(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+    if cam is not None:
+        c = np.array([*cam, 0.0])
+        for M in mats:
+            c = M @ c
+        # la face vue sur le rendu officiel regarde vers +x / +z (comme la caméra du catalogue)
+        if c[0] + c[2] < 0:
+            mesh.apply_transform(trimesh.transformations.rotation_matrix(math.pi, [0, 1, 0]))
     b = mesh.bounds
     mesh.apply_translation([-(b[0][0] + b[1][0]) / 2, -b[0][1], -(b[0][2] + b[1][2]) / 2])
     return mesh

@@ -1,26 +1,33 @@
-# Modèles 3D des modules : conversion 2D → 3D (TripoSR)
+# Modèles 3D des modules : conversion 2D → 3D
 
 Chaque module du catalogue a un rendu produit officiel (`src/catalog/references.json`, généré par
-`npm run refs:wibit`). Ce dossier convertit ces images en modèles 3D (GLB) avec
-[TripoSR](https://github.com/VAST-AI-Research/TripoSR) (licence MIT, fonctionne sur CPU), puis :
+`npm run refs:wibit`). Ces images sont converties en modèles 3D texturés (GLB) en deux étapes.
 
-- détoure et cadre l'objet (fond transparent ou blanc retiré) ;
-- retire les fragments isolés, lisse la surface (filtre de Taubin), simplifie le maillage (~12 000 faces) ;
-- corrige l'inclinaison de la prise de vue (rendus officiels pris en surplomb, ~30°), aligne l'emprise sur les axes (longueur du module sur x), pose le modèle à la ligne d'eau ;
-- recolore chaque sommet dans la palette officielle Wibit (jaune, vert, bleu, rouge, blanc, gris),
-  sans l'ombrage cuit dans la photo (`palette.py` retrouve ces teintes à partir des rendus) ;
-- écrit `<id>.glb` : à copier dans `public/models/` et à déclarer dans `public/models/index.json`
-  (`{"guardtower": {"file": "guardtower.glb"}, …}`) ; l'application les charge à la place du rendu procédural.
+**1. Reconstruction** (`infer.py`) : [TripoSR](https://github.com/VAST-AI-Research/TripoSR)
+(licence MIT, CPU) reconstruit la forme à partir du rendu détouré ; le maillage brut est gardé
+(`work/raw/<id>.ply`) pour pouvoir refaire la finition sans relancer le réseau (~25 s par module sur 4 cœurs).
+
+**2. Finition et texture** (`bake.py`, ~10 s par module) :
+- surface reconstruite proprement : voxelisation pleine, suppression des voiles et lambeaux trop fins,
+  isosurface lissée (aspect gonflable tendu), simplification à 20 000 faces ;
+- dépliage UV (xatlas) et texture 1024 × 1024 peinte en projetant le rendu officiel depuis la caméra
+  d'entrée de TripoSR (logos, prises, cordes, numéros), avec un test de visibilité ; les faces cachées
+  prennent les couleurs reconstruites, fortement lissées ;
+- toutes les couleurs ramenées à la palette officielle Wibit (jaune, vert, bleu, rouge, blanc, gris, noir) ;
+- inclinaison de la prise de vue corrigée (~30°), emprise alignée sur les axes, face documentée tournée
+  vers l'avant, posé à la ligne d'eau.
+
+`finish.py` est la variante sans texture (couleurs par sommet).
 
 ```bash
 git clone --depth 1 https://github.com/VAST-AI-Research/TripoSR scripts/model3d/TripoSR
 python3 -m venv .venv-3d
 .venv-3d/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
-.venv-3d/bin/pip install "transformers<5" einops omegaconf trimesh pillow huggingface-hub scikit-image scipy fast-simplification
+.venv-3d/bin/pip install "transformers<5" einops omegaconf trimesh pillow huggingface-hub scikit-image scipy fast-simplification xatlas imageio
 # rendus officiels -> renders/<id>.png (liste : src/catalog/references.json)
-.venv-3d/bin/python scripts/model3d/convert_triposr.py renders out guardtower actiontower-xl
+.venv-3d/bin/python scripts/model3d/infer.py renders work            # [id ...] pour quelques modules
+.venv-3d/bin/python scripts/model3d/bake.py work public/models        # puis déclarer les GLB dans public/models/index.json
 ```
 
-`torchmcubes` (à compiler) est remplacé par le marching cubes de scikit-image (`shim/`).
+`torchmcubes` (à compiler) et `rembg` (inutile, rendus déjà détourés) sont remplacés par `shim/`.
 Les poids (`stabilityai/TripoSR`, ~1,7 Go) sont téléchargés depuis Hugging Face au premier lancement.
-Sur 4 cœurs CPU, compter environ 20 à 25 secondes par module (résolution 256).

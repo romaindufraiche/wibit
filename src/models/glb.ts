@@ -35,13 +35,19 @@ function normalize(scene: THREE.Object3D, s: ModuleSpec, rotY = 0): THREE.Group 
     if (m.isMesh) {
       m.castShadow = true;
       m.receiveShadow = true;
-      // PVC gonflable : mat et non métallique (glTF suppose « métal » quand rien n'est précisé)
-      for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
-        const sm = mat as THREE.MeshStandardMaterial;
-        if (sm.isMeshStandardMaterial) {
-          sm.metalness = 0;
-          sm.roughness = 0.45;
-        }
+      if (!m.geometry.getAttribute('normal')) m.geometry.computeVertexNormals();
+      // PVC gonflable : non métallique, satiné, léger vernis (reflets du soleil sur la toile tendue)
+      const src = m.material as THREE.MeshStandardMaterial;
+      if (src && (src as THREE.Material).isMaterial) {
+        m.material = new THREE.MeshPhysicalMaterial({
+          color: src.color ?? new THREE.Color(0xffffff),
+          map: src.map ?? null,
+          vertexColors: !!m.geometry.getAttribute('color'),
+          metalness: 0,
+          roughness: 0.42,
+          clearcoat: 0.35,
+          clearcoatRoughness: 0.35,
+        });
       }
     }
   });
