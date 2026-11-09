@@ -362,6 +362,7 @@ async function serveStatic(req, res, path) {
   let file = normalize(join(DIST, decodeURIComponent(path)));
   if (!file.startsWith(DIST)) return send(res, 403, { error: 'Interdit' });
   if (path === '/admin' || path === '/admin/') file = join(DIST, 'admin.html');
+  if (path === '/catalogue' || path === '/catalogue/') file = join(DIST, 'catalogue.html');
   try {
     if ((await stat(file)).isDirectory()) file = join(file, 'index.html');
   } catch {
