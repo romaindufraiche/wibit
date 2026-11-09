@@ -14,11 +14,12 @@ function mat(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> 
   return new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.02, ...opts });
 }
 
-// Palette Wibit (jaune / bleu / blanc / gris)
+// Palette officielle Wibit, relevée sur les rendus produits du catalogue (wibitsports.com) :
+// jaune #F2D21C, vert #61AE2B, bleu #2F6FC2 (les surfaces d'accent, autrefois bleu clair, sont vertes)
 export const MAT = {
-  yellow: mat(0xffc20e),
-  blue: mat(0x0b5fae),
-  lightBlue: mat(0x37a2e6),
+  yellow: mat(0xf4cc00),
+  blue: mat(0x2f6fc2),
+  lightBlue: mat(0x61ae2b),
   white: mat(0xf2f4f7),
   grey: mat(0x6b7682),
   dark: mat(0x2a2f36, { roughness: 0.8 }),
