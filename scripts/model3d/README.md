@@ -40,3 +40,14 @@ python3 -m venv .venv-3d
 
 `torchmcubes` (à compiler) et `rembg` (inutile, rendus déjà détourés) sont remplacés par `shim/`.
 Les poids (`stabilityai/TripoSR`, ~1,7 Go) sont téléchargés depuis Hugging Face au premier lancement.
+
+## Reconstruction géométrique (`bake2.py`, version actuelle)
+
+La forme TripoSR sert d'ébauche, puis :
+- mise aux dimensions officielles dans un repère métrique aligné sur les axes du module ;
+- symétries : listes des modules symétriques sur les deux axes ou gauche / droite, confirmées par la mesure
+  sur la reconstruction ; la symétrie est alors imposée exactement ;
+- modules plats (≤ 60 cm : bases, jonctions, poutres) : emprise en segments droits (polygone simplifié, angles
+  ramenés aux multiples de 15°), volume extrudé, faces planes ;
+- emprise stricte (rien hors du rectangle officiel), dimensions exactes ;
+- même texture que `bake.py` ; grands aplats lissés dans l'espace 3D (pas de moucheture).

@@ -4,8 +4,8 @@ S=${S:-$(cd "$(dirname "$0")" && pwd)/work-env}  # dossier de travail (work/, ba
 OUT=$(cd "$(dirname "$0")/../.." && pwd)/public/models
 G=${GLTF_TRANSFORM:-npx -y @gltf-transform/cli@4}
 cd "$(dirname "$0")"
-$S/venv/bin/python -I bake.py $S/work $S/baked "$@" 2>&1 | grep -v -i warn | grep -v inclinaison
-for f in $S/baked/*.glb; do
+$S/venv/bin/python -I bake2.py $S/work $S/baked2 "$@" 2>&1 | grep -v -i warn | grep -v inclinaison
+for f in $S/baked2/*.glb; do
   id=$(basename $f .glb)
   [ $# -gt 0 ] && [[ ! " $* " =~ " $id " ]] && continue
   $G optimize $f $OUT/$id.glb --compress meshopt --texture-compress webp --texture-size 1024 >/dev/null 2>&1 || echo "compression $id : échec"
