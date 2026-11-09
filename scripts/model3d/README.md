@@ -5,8 +5,8 @@ Chaque module du catalogue a un rendu produit officiel (`src/catalog/references.
 [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (licence MIT, fonctionne sur CPU), puis :
 
 - détoure et cadre l'objet (fond transparent ou blanc retiré) ;
-- retire les fragments isolés, simplifie le maillage (~7 000 faces) ;
-- aligne l'emprise sur les axes (longueur du module sur x), pose le modèle à la ligne d'eau ;
+- retire les fragments isolés, lisse la surface (filtre de Taubin), simplifie le maillage (~12 000 faces) ;
+- corrige l'inclinaison de la prise de vue (rendus officiels pris en surplomb, ~30°), aligne l'emprise sur les axes (longueur du module sur x), pose le modèle à la ligne d'eau ;
 - recolore chaque sommet dans la palette officielle Wibit (jaune, vert, bleu, rouge, blanc, gris),
   sans l'ombrage cuit dans la photo (`palette.py` retrouve ces teintes à partir des rendus) ;
 - écrit `<id>.glb` : à copier dans `public/models/` et à déclarer dans `public/models/index.json`
@@ -23,4 +23,4 @@ python3 -m venv .venv-3d
 
 `torchmcubes` (à compiler) est remplacé par le marching cubes de scikit-image (`shim/`).
 Les poids (`stabilityai/TripoSR`, ~1,7 Go) sont téléchargés depuis Hugging Face au premier lancement.
-Sur 4 cœurs CPU, compter environ 1 à 3 minutes par module.
+Sur 4 cœurs CPU, compter environ 20 à 25 secondes par module (résolution 256).

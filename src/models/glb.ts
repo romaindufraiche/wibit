@@ -35,6 +35,14 @@ function normalize(scene: THREE.Object3D, s: ModuleSpec, rotY = 0): THREE.Group 
     if (m.isMesh) {
       m.castShadow = true;
       m.receiveShadow = true;
+      // PVC gonflable : mat et non métallique (glTF suppose « métal » quand rien n'est précisé)
+      for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
+        const sm = mat as THREE.MeshStandardMaterial;
+        if (sm.isMeshStandardMaterial) {
+          sm.metalness = 0;
+          sm.roughness = 0.45;
+        }
+      }
     }
   });
   // orientation : la plus grande dimension horizontale suit la longueur du module

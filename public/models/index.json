@@ -1,1 +1,10 @@
-{}
+{
+ "guardtower": {
+  "file": "guardtower.glb",
+  "source": "TripoSR"
+ },
+ "actiontower-xl": {
+  "file": "actiontower-xl.glb",
+  "source": "TripoSR"
+ }
+}
