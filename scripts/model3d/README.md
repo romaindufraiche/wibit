@@ -15,7 +15,10 @@ Chaque module du catalogue a un rendu produit officiel (`src/catalog/references.
   d'entrée de TripoSR (logos, prises, cordes, numéros), avec un test de visibilité ; les faces cachées
   prennent les couleurs reconstruites, fortement lissées ;
 - toutes les couleurs ramenées à la palette officielle Wibit (jaune, vert, bleu, rouge, blanc, gris, noir) :
-  grands aplats aux contours adoucis, détails (logos, prises, cordes) gardés nets ;
+  fond en jaune / vert / bleu aux contours adoucis, détails (logos, prises, numéros) posés par-dessus et
+  gardés nets ; reflets de la photo ramenés à leur teinte ; faces cachées en aplats des trois teintes
+  principales ; petites taches absorbées par leur entourage ; plaques rouges denses (texte fondu) retirées ;
+- assise plate à la ligne d'eau (4 % inférieurs aplanis) ;
 - inclinaison de la prise de vue corrigée (~30°), emprise alignée sur les axes, face documentée tournée
   vers l'avant, posé à la ligne d'eau.
 

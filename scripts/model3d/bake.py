@@ -25,10 +25,10 @@ def classify(rgb):
     hue_names = list(HUES)
     hd = np.stack([np.minimum(np.abs(h - HUES[k]), 360 - np.abs(h - HUES[k])) for k in hue_names], 1)
     out[:] = np.array([NAMES.index(k) for k in hue_names])[hd.argmin(1)]
-    neutral = (sat < 0.22) | (mx < 0.12)
-    out[neutral & (mx > 0.68)] = NAMES.index('white')
-    out[neutral & (mx <= 0.68) & (mx > 0.34)] = NAMES.index('grey')
-    out[neutral & (mx <= 0.34)] = NAMES.index('dark')
+    # reflets de la photo (clairs, peu saturés) : gardent leur teinte ; seuls les vrais neutres sont blanc / gris / noir
+    out[(sat < 0.12) & (mx > 0.78)] = NAMES.index('white')
+    out[(sat < 0.14) & (mx <= 0.78) & (mx > 0.36)] = NAMES.index('grey')
+    out[(mx <= 0.22) & (sat < 0.45)] = NAMES.index('dark')
     return out
 
 
@@ -133,12 +133,36 @@ def bake(raw_path, img_path, faces=30000, tex=2048):
         return np.stack([ndimage.uniform_filter((lbl == k).astype(np.float32), size) for k in range(K)], -1).argmax(-1)
     big = [NAMES.index(k) for k in ('yellow', 'green', 'blue')]
     # grands aplats (jaune, vert, bleu) : contours adoucis ; faces cachées : très lissées
-    base = np.where(vis, mode(lab, 9), mode(lab, 21))
-    base = np.where(np.isin(base, big) | ~vis, base, mode(lab, 5))
+    def mode_big(lbl, size):
+        return np.array(big)[np.stack([ndimage.uniform_filter((lbl == k).astype(np.float32), size) for k in big], -1).argmax(-1)]
+    # fond : uniquement les trois teintes principales (jaune, vert, bleu), les détails sont posés par-dessus
+    base = np.where(vis, mode_big(lab, 9), mode_big(lab, 21))
     # détails sur la face visible (logos, prises, cordes, numéros) : gardés nets
     fine = mode(lab, 3)
     detail = vis & ~np.isin(fine, big) & (ndimage.uniform_filter((lab == fine).astype(np.float32), 3) > 0.55)
+    # rouge : un lettrage est fin (mêlé au fond) ; une zone rouge dense vient d'un texte fondu par la photo
+    red = NAMES.index('red')
+    detail &= ~((fine == red) & (ndimage.uniform_filter((lab == red).astype(np.float32), 15) > 0.5))
     lab2 = np.where(filled, np.where(detail, fine, base), -1)
+    # faces cachées : uniquement les trois teintes principales (pas de détails inventés)
+    big_mode = np.stack([ndimage.uniform_filter((lab2 == k).astype(np.float32), 31) for k in big], -1).argmax(-1)
+    hidden_bad = filled & ~vis & ~np.isin(lab2, big)
+    lab2[hidden_bad] = np.array(big)[big_mode[hidden_bad]]
+    # petites taches : îlots trop petits absorbés par leur entourage (aplats propres et homogènes)
+    min_big = int(0.0006 * T * T)
+    for k in range(K):
+        comp, n = ndimage.label(lab2 == k)
+        if not n:
+            continue
+        sizes = np.bincount(comp.ravel())
+        limit = min_big if k in big else 60
+        small = (sizes < limit)
+        # rouge : lettrages et logos sont petits ; une grande plaque rouge vient d'un texte fondu par la photo
+        if NAMES[k] == 'red':
+            small |= sizes > int(0.0012 * T * T)
+        small[0] = False
+        lab2[small[comp]] = -1
+    lab2[~filled] = -1
     _, ind = ndimage.distance_transform_edt(lab2 < 0, return_indices=True)
     lab2 = lab2[ind[0], ind[1]]
     img = PAL[lab2].astype(np.uint8)
@@ -147,6 +171,11 @@ def bake(raw_path, img_path, faces=30000, tex=2048):
     textured = trimesh.Trimesh(vertices=V, faces=F, process=False)
     textured.visual = trimesh.visual.TextureVisuals(uv=uvs, material=trimesh.visual.material.PBRMaterial(baseColorTexture=texture, metallicFactor=0.0, roughnessFactor=0.45))
     textured = align(textured, cam=(DIST, 0.0, 0.0))
+    # assise plate : le dessous (4 % de la hauteur) est aplani sur la ligne d'eau
+    v = textured.vertices.copy()
+    floor = 0.04 * textured.extents[1]
+    v[:, 1] = np.maximum(v[:, 1], floor) - floor
+    textured.vertices = v
     return textured, {'mirror': bool(mirror), 'visible': round(float(visible.mean()), 2), 'faces': int(len(F))}
 
 
