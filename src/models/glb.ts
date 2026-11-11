@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import type { ModuleSpec } from '../core/types';
+import { isHandmade } from './handmade';
 
 /*
  * Modèles 3D réalistes (GLB générés depuis les rendus officiels, cf. scripts/meshy.mjs).
@@ -18,11 +19,12 @@ interface Entry {
 const protos = new Map<string, THREE.Group>();
 let manifest: Record<string, Entry> = {};
 
-export const hasRealModel = (id: string) => protos.has(id);
+export const hasRealModel = (id: string) => protos.has(id) && !isHandmade(id);
 export const realModelCount = () => protos.size;
 
 /** Copie du modèle réaliste d'un module, ou null s'il n'en a pas. */
 export function realModel(s: ModuleSpec): THREE.Group | null {
+  if (isHandmade(s.id)) return null; // modèle fait main : prioritaire sur la reconstruction
   const p = protos.get(s.id);
   return p ? p.clone(true) : null;
 }

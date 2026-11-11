@@ -324,3 +324,8 @@ button {
     background: #fff;
   }
 }
+
+.tag.hand {
+  background: var(--navy);
+  color: #fff;
+}

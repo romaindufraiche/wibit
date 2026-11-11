@@ -5,6 +5,7 @@ import { CATEGORY_LABELS, MODULES } from '../catalog/modules';
 import type { Category, ModuleSpec } from '../core/types';
 import { buildModel } from '../models/builders';
 import { hasRealModel, loadRealModels, realModel } from '../models/glb';
+import { isHandmade } from '../models/handmade';
 
 /*
  * Catalogue 2D / 3D : pour chaque module, le rendu produit officiel (wibitsports.com) à côté de
@@ -49,7 +50,7 @@ const list = app.querySelector<HTMLElement>('.list')!;
 
 function card(s: ModuleSpec): string {
   const r = refs[s.id];
-  const kind = hasRealModel(s.id) ? '<span class="tag real">3D reconstruite</span>' : '<span class="tag">3D procédurale</span>';
+  const kind = isHandmade(s.id) ? '<span class="tag hand">3D modélisée</span>' : hasRealModel(s.id) ? '<span class="tag real">3D reconstruite</span>' : '<span class="tag">3D procédurale</span>';
   const img = r?.render ? `<img src="${esc(webp(r.render))}" data-orig="${esc(r.render)}" alt="${esc(r.name)}" loading="lazy" referrerpolicy="no-referrer">` : `<div class="noimg">Pas de rendu officiel</div>`;
   const shot = shots.get(s.id);
   return `<article class="card" data-id="${s.id}">

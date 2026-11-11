@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { ModuleSpec } from '../core/types';
+import { HANDMADE } from './handmade';
 
 /*
  * Modèles 3D procéduraux des modules Wibit (MVP) : formes gonflables simplifiées construites
@@ -43,7 +44,7 @@ function add(g: G, mesh: THREE.Object3D, x = 0, y = 0, z = 0): THREE.Object3D {
   return mesh;
 }
 
-function rbox(w: number, h: number, d: number, m: THREE.Material, r = 0.12): THREE.Mesh {
+export function rbox(w: number, h: number, d: number, m: THREE.Material, r = 0.12): THREE.Mesh {
   const rad = Math.max(0.01, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001));
   return new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, rad), m);
 }
@@ -62,7 +63,7 @@ function rod(r: number, len: number, m: THREE.Material, axis: 'x' | 'y' | 'z' = 
   return mesh;
 }
 
-function tube(points: [number, number, number][], r: number, m: THREE.Material, closed = false): THREE.Mesh {
+export function tube(points: [number, number, number][], r: number, m: THREE.Material, closed = false): THREE.Mesh {
   const curve = new THREE.CatmullRomCurve3(
     points.map((p) => new THREE.Vector3(...p)),
     closed,
@@ -71,7 +72,7 @@ function tube(points: [number, number, number][], r: number, m: THREE.Material, 
 }
 
 /** Profil 2D (x, y) extrudé sur la largeur w (axe z), centré en z. */
-function profile(pts: [number, number][], w: number, m: THREE.Material, bevel = 0.08): THREE.Mesh {
+export function profile(pts: [number, number][], w: number, m: THREE.Material, bevel = 0.08): THREE.Mesh {
   const shape = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
   const depth = Math.max(0.01, w - 2 * bevel);
   const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 3, curveSegments: 16 });
@@ -80,7 +81,7 @@ function profile(pts: [number, number][], w: number, m: THREE.Material, bevel = 
 }
 
 /** Forme dans le plan horizontal (x, z) extrudée vers le haut de h. */
-function flatShape(pts: [number, number][], h: number, m: THREE.Material, holes: [number, number][][] = [], bevel = 0.06): THREE.Mesh {
+export function flatShape(pts: [number, number][], h: number, m: THREE.Material, holes: [number, number][][] = [], bevel = 0.06): THREE.Mesh {
   const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
   for (const hole of holes) shape.holes.push(new THREE.Path(hole.map(([x, z]) => new THREE.Vector2(x, -z))));
   const geo = new THREE.ExtrudeGeometry(shape, { depth: Math.max(0.01, h - 2 * bevel), bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 24 });
@@ -766,10 +767,12 @@ export function buildModel(s: ModuleSpec): THREE.Group {
   if (!proto) {
     proto = new THREE.Group();
     const build = B[s.model.kind];
-    if (build) build(proto, s, s.model);
+    // modules modélisés à la main d'après le rendu officiel : prioritaires
+    if (HANDMADE[s.id]) HANDMADE[s.id](proto, s);
+    else if (build) build(proto, s, s.model);
     else fallback(proto, s);
     proto.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) {
+      if ((o as THREE.Mesh).isMesh && !o.userData.decal) {
         o.castShadow = true;
         o.receiveShadow = true;
       }
